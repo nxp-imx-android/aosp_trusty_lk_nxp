@@ -76,6 +76,11 @@ const uint32_t rng_inst_dsc[] = {
 static void caam_test(void);
 #endif
 
+#if !defined(MACH_IMX7) && !defined(MACH_IMX6)
+static void caam_clk_get(void) {
+    return;
+}
+#else /* !defined(MACH_IMX7) && !defined(MACH_IMX6) */
 static void caam_clk_get(void) {
     uint32_t val;
 
@@ -90,6 +95,7 @@ static void caam_clk_get(void) {
 #endif
     writel(val, ccm_base + CCM_CAAM_CCGR_OFFSET);
 }
+#endif
 
 static void setup_job_rings(void) {
     int rc;
@@ -168,6 +174,7 @@ int init_caam_env(void) {
         return ERR_GENERIC;
     }
 
+#ifndef MACH_IMX8M
     ccm_base = mmap(NULL, CCM_REG_SIZE, PROT_READ | PROT_WRITE,
                     MMAP_FLAG_IO_HANDLE, CCM_MMIO_ID, 0);
     if (ccm_base == MAP_FAILED) {
@@ -176,6 +183,7 @@ int init_caam_env(void) {
     }
 
     TLOGD("caam bases: %p, %p, %p\n", caam_base, sram_base, ccm_base);
+#endif
 
     /* allocate rings */
     assert(sizeof(struct caam_job_rings) <= 16); /* TODO handle alignment */
@@ -234,16 +242,24 @@ void caam_open(void) {
         temp_reg = readl(CAAM_RTMCTL) | RTMCTL_ERR;
         writel(temp_reg, CAAM_RTMCTL);
 
-        /* init rng job */
-        assert(sizeof(rng_inst_dsc) <= sizeof(g_job->dsc));
-        memcpy(g_job->dsc, rng_inst_dsc, sizeof(rng_inst_dsc));
-        g_job->dsc_used = countof(rng_inst_dsc);
+        uint32_t retry = 5;
+        /* Some device like imx8m may failed init. Need retry. */
+        while (retry) {
+            retry--;
+            /* init rng job */
+            assert(sizeof(rng_inst_dsc) <= sizeof(g_job->dsc));
+            memcpy(g_job->dsc, rng_inst_dsc, sizeof(rng_inst_dsc));
+            g_job->dsc_used = countof(rng_inst_dsc);
 
-        run_job(g_job);
+            run_job(g_job);
 
-        if (g_job->status & JOB_RING_STS) {
-            TLOGE("job failed (0x%08x)\n", g_job->status);
-            abort();
+            if (g_job->status & JOB_RING_STS) {
+                TLOGE("job failed (0x%08x)\n", g_job->status);
+                temp_reg = readl(CAAM_RTMCTL) | RTMCTL_ERR;
+                writel(temp_reg, CAAM_RTMCTL);
+            } else {
+                break;
+            }
         }
 
         /* ensure that the RNG was correctly instantiated */
