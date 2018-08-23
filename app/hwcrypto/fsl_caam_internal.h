@@ -33,7 +33,9 @@
 #define __CAAM_INTERNAL_H__
 
 static uint8_t* caam_base;
+#ifndef MACH_IMX8M
 static uint8_t* ccm_base;
+#endif
 static uint8_t* sram_base;
 
 /* 4kbyte pages */
