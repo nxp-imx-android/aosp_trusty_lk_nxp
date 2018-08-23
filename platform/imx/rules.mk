@@ -25,12 +25,10 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
+# By default, ARCH is arm.
+ifeq (,$(ARCH))
 ARCH := arm
 ARM_CPU := cortex-a7
-WITH_LIB_SM := 1
-WITH_LIB_SM_MONITOR := 1
-WITH_LIB_VERSION := 1
-WITH_VIRT_TIMER_INIT ?= 1
 
 # TEE memory phys address and size
 MEMBASE ?= 0x9e000000
@@ -39,8 +37,15 @@ MEMSIZE ?= 0x02000000
 # TEE kernel virt address
 KERNEL_BASE ?= $(MEMBASE)
 
+WITH_VIRT_TIMER_INIT := 1
+WITH_LIB_SM_MONITOR := 1
+
 # Enable TZ controller
 WITH_TZASC ?= true
+endif
+
+WITH_LIB_SM ?= 1
+WITH_LIB_VERSION ?= 1
 
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/common/include \
