@@ -173,7 +173,7 @@ int init_caam_env(void) {
         return ERR_GENERIC;
     }
 
-#ifndef MACH_IMX8M
+#if defined(MACH_IMX7D)
     ccm_base = mmap(NULL, CCM_REG_SIZE, PROT_READ | PROT_WRITE,
                     MMAP_FLAG_IO_HANDLE, CCM_MMIO_ID, 0);
     if (ccm_base == MAP_FAILED) {
