@@ -36,8 +36,10 @@ trusty_app_manifest_t TRUSTY_APP_MANIFEST_ATTRS trusty_app_manifest = {
                         TRUSTY_APP_CONFIG_MAP_MEM(CAAM_SEC_RAM_MMIO_ID,
                                                   CAAM_PHY_ARB_BASE_ADDR,
                                                   CAAM_SEC_RAM_SIZE),
+#if defined(MACH_IMX7D)
                         TRUSTY_APP_CONFIG_MAP_MEM(CCM_MMIO_ID,
                                                   CCM_PHY_BASE_ADDR,
                                                   CCM_REG_SIZE),
+#endif
                 },
 };
