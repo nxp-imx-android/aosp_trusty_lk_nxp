@@ -39,9 +39,11 @@
 #define TLOG_TAG "hwkey_caam"
 #include "tlog.h"
 
+#ifndef SOFTWARE_CRYPTO
 static const uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
         0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
+#endif
 
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
@@ -92,6 +94,11 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
                                      uint8_t* kbuf,
                                      size_t kbuf_len,
                                      size_t* klen) {
+#ifdef SOFTWARE_CRYPTO
+    memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
+    *klen = RPMB_SS_AUTH_KEY_SIZE;
+    return HWKEY_NO_ERROR;
+#else
     uint32_t res;
     assert(kbuf_len >= RPMB_SS_AUTH_KEY_SIZE);
 
@@ -109,6 +116,7 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
         memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
         return HWKEY_ERR_GENERIC;
     }
+#endif
 }
 
 /*
@@ -155,11 +163,13 @@ static void unpack_kbox(void) {
  */
 void hwkey_init_srv_provider(void) {
     int rc;
+#ifndef SOFTWARE_CRYPTO
 
     TLOGI("Init HWKEY service provider\n");
 
     unpack_kbox();
 
+#endif
     /* install key handlers */
     hwkey_install_keys(_keys, countof(_keys));
 
