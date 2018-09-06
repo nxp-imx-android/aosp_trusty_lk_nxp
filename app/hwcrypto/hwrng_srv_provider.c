@@ -29,8 +29,12 @@
 #include <trusty_log.h>
 
 void hwrng_dev_get_rng_data(uint8_t* buf, size_t buf_len) {
+#ifndef SOFTWARE_CRYPTO
     uint32_t res = caam_hwrng(buf, buf_len);
     assert(res == CAAM_SUCCESS);
+#else
+    memset(buf, 1, buf_len);
+#endif
 }
 
 void hwrng_init_srv_provider(void) {
