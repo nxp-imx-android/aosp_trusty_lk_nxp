@@ -222,11 +222,13 @@ int main(void) {
 
     TLOGD("Initializing\n");
 
+#ifndef SOFTWARE_CRYPTO
     rc = init_caam_env();
     if (rc != 0) {
         TLOGE("CAAM init env failed (%d)!\n", rc);
         return rc;
     }
+#endif
 
     /* initialize service providers */
     hwrng_init_srv_provider();
