@@ -135,7 +135,8 @@ static void unpack_kbox(void) {
 
     if (strncmp(kbox->magic, KEYPACK_MAGIC, 4)) {
         TLOGE("Invalid magic\n");
-        abort();
+	/* return earily */
+	return;
     }
 
     /* Copy RPMB blob */
