@@ -47,6 +47,9 @@
 #define TLOG_TAG "caam_drv"
 #include <trusty_log.h>
 
+#define SHA1_DIGEST_LEN 20
+#define SHA256_DIGEST_LEN 32
+
 struct caam_job_rings {
     uint32_t in[1];  /* single entry input ring */
     uint32_t out[2]; /* single entry output ring (consists of two words) */
@@ -109,6 +112,19 @@ static void setup_job_rings(void) {
         abort();
     }
 
+#ifdef MACH_IMX8Q
+    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use
+     * Job Ring 3 here.
+     */
+    writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, in),
+           CAAM_IRBAR3);  // input ring address
+    writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, out),
+           CAAM_ORBAR3);  // output ring address
+
+    /* Initialize job ring sizes */
+    writel(countof(g_rings->in), CAAM_IRSR3);
+    writel(countof(g_rings->in), CAAM_ORSR3);
+#else
     writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, in),
            CAAM_IRBAR0);  // input ring address
     writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, out),
@@ -117,6 +133,7 @@ static void setup_job_rings(void) {
     /* Initialize job ring sizes */
     writel(countof(g_rings->in), CAAM_IRSR0);
     writel(countof(g_rings->in), CAAM_ORSR0);
+#endif
 }
 
 static void run_job(struct caam_job* job) {
@@ -142,10 +159,21 @@ static void run_job(struct caam_job* job) {
     caam_clk_get();
 
     /* start job */
+    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use
+     * Job Ring 3 here.
+     */
+#ifdef MACH_IMX8Q
+    writel(1, CAAM_IRJAR3);
+#else
     writel(1, CAAM_IRJAR0);
+#endif
 
     /* Wait for job ring to complete the job: 1 completed job expected */
+#ifdef MACH_IMX8Q
+    while (readl(CAAM_ORSFR3) != 1)
+#else
     while (readl(CAAM_ORSFR0) != 1)
+#endif
         ;
 
     finish_dma(g_rings->out, sizeof(g_rings->out), DMA_FLAG_FROM_DEVICE);
@@ -156,7 +184,11 @@ static void run_job(struct caam_job* job) {
     job->status = g_rings->out[1];
 
     /* remove job */
+#ifdef MACH_IMX8Q
+    writel(1, CAAM_ORJRR3);
+#else
     writel(1, CAAM_ORJRR0);
+#endif
 }
 
 int init_caam_env(void) {
@@ -200,7 +232,13 @@ int init_caam_env(void) {
         return ERR_NO_MEMORY;
     }
 
+#ifdef MACH_IMX8Q
+    /* imx8q caam init has been done by SECO. */
+    /* Initialize job ring addresses */
+    setup_job_rings();
+#else
     caam_open();
+#endif
 #if WITH_CAAM_SELF_TEST
     caam_test();
 #endif
@@ -487,35 +525,50 @@ void* caam_get_keybox(void) {
     return sram_base;
 }
 
-uint32_t caam_hash(uint8_t* in, uint8_t* out, uint32_t len) {
-    int ret;
-    uint32_t in_pa;
-    uint32_t out_pa;
-    struct dma_pmem pmem;
+/* support SHA1 and SHA256 calculation, both input/output address should
+ * be physical address.
+ */
+uint32_t caam_hash_pa(uint32_t in_pa, uint32_t out_pa,
+                      uint32_t len, enum hash_algo algo) {
+    /* construct job descriptor */
+    if (len < 0xffff) {
+        g_job->dsc[0] = 0xB0800006;
 
-    assert(len <= 0xFFFFu);
+	if (algo == SHA1)
+            g_job->dsc[1] = 0x8441000D;
+	else
+            g_job->dsc[1] = 0x8443000D;
 
-    ret = prepare_dma((void*)in, len, DMA_FLAG_TO_DEVICE, &pmem);
-    if (ret != 1) {
-        TLOGE("failed (%d) to prepare dma buffer\n", ret);
-        return CAAM_FAILURE;
+        g_job->dsc[2] = 0x24140000 | (0x0000ffff & len);
+        g_job->dsc[3] = in_pa;
+
+	if (algo == SHA1)
+            g_job->dsc[4] = 0x54200000 | 20;
+	else
+            g_job->dsc[4] = 0x54200000 | 32;
+
+	g_job->dsc[5] = out_pa;
+        g_job->dsc_used = 6;
+    } else {
+        g_job->dsc[0] = 0xB0800007;
+
+        if (algo == SHA1)
+            g_job->dsc[1] = 0x8441000D;
+        else
+            g_job->dsc[1] = 0x8443000D;
+
+        g_job->dsc[2] = 0x24540000;
+        g_job->dsc[3] = in_pa;
+        g_job->dsc[4] = len;
+
+	if (algo == SHA1)
+            g_job->dsc[5] = 0x54200000 | 20;
+        else
+            g_job->dsc[5] = 0x54200000 | 32;
+
+        g_job->dsc[6] = out_pa;
+        g_job->dsc_used = 7;
     }
-    in_pa = (uint32_t)pmem.paddr;
-
-    ret = prepare_dma(out, len, DMA_FLAG_FROM_DEVICE, &pmem);
-    if (ret != 1) {
-        TLOGE("failed (%d) to prepare dma buffer\n", ret);
-        return CAAM_FAILURE;
-    }
-    out_pa = (uint32_t)pmem.paddr;
-
-    g_job->dsc[0] = 0xB0800006;
-    g_job->dsc[1] = 0x8441000D;
-    g_job->dsc[2] = 0x24140000 | (0x0000ffff & len);
-    g_job->dsc[3] = in_pa;
-    g_job->dsc[4] = 0x54200000 | 20;
-    g_job->dsc[5] = out_pa;
-    g_job->dsc_used = 6;
 
     run_job(g_job);
 
@@ -524,7 +577,57 @@ uint32_t caam_hash(uint8_t* in, uint8_t* out, uint32_t len) {
         return CAAM_FAILURE;
     }
 
-    finish_dma(out, len, DMA_FLAG_FROM_DEVICE);
+    return CAAM_SUCCESS;
+}
+
+/* support SHA1 and SHA256 calculation, both input/output address should
+ * be virtual address.
+ */
+uint32_t caam_hash(uint32_t in, uint32_t out,
+		   uint32_t len, enum hash_algo algo) {
+    int ret;
+    uint32_t in_pa;
+    uint32_t out_pa;
+    struct dma_pmem pmem;
+
+    /* prepare dma and get input physical address */
+    ret = prepare_dma((void*)in, len, DMA_FLAG_TO_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    in_pa = (uint32_t)pmem.paddr;
+
+    /* prepare dma and get output physical address */
+    if (algo == SHA1)
+        ret = prepare_dma((void *)out, SHA1_DIGEST_LEN,
+                          DMA_FLAG_FROM_DEVICE, &pmem);
+    else if (algo == SHA256)
+        ret = prepare_dma((void *)out, SHA256_DIGEST_LEN,
+                          DMA_FLAG_FROM_DEVICE, &pmem);
+    else {
+        TLOGE("unsupported hash algorithm!\n");
+        return CAAM_FAILURE;
+    }
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    out_pa = (uint32_t)pmem.paddr;
+
+    /* hash calculation */
+    if (caam_hash_pa(in_pa, out_pa, len, algo) != CAAM_SUCCESS)
+	    return CAAM_FAILURE;
+
+    if (algo == SHA1)
+        finish_dma((void *)out, SHA1_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
+    else if (algo == SHA256)
+        finish_dma((void *)out, SHA256_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
+    else {
+        TLOGE("unsupported hash algorithm!\n");
+        return CAAM_FAILURE;
+    }
+
     return CAAM_SUCCESS;
 }
 
@@ -686,11 +789,11 @@ static void caam_hash_test(void) {
     memset(hash2, 0xAA, sizeof(hash2));
 
     /* invoke hash twice */
-    caam_hash(in, hash1, sizeof(in));
-    caam_hash(in, hash2, sizeof(in));
+    caam_hash((uint32_t)in, (uint32_t)hash1, sizeof(in), SHA256);
+    caam_hash((uint32_t)in, (uint32_t)hash2, sizeof(in), SHA256);
 
     /* compare results */
-    if (memcmp(hash1, hash2, 20) != 0)
+    if (memcmp(hash1, hash2, 32) != 0)
         TLOGI("caam hash test FAILED!!!\n");
     else
         TLOGI("caam hash test PASS!!!\n");
