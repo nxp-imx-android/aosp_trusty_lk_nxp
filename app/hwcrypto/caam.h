@@ -37,6 +37,11 @@
 #define CAAM_SUCCESS 0
 #define CAAM_FAILURE 1
 
+enum hash_algo {
+    SHA1 = 0,
+    SHA256
+};
+
 int init_caam_env(void);
 
 void caam_open(void);
@@ -65,6 +70,9 @@ uint32_t caam_hwrng(uint8_t* output_ptr, uint32_t output_len);
 uint32_t caam_gen_kdfv1_root_key(uint8_t* out, size_t size);
 
 void* caam_get_keybox(void);
+
+uint32_t caam_hash_pa(uint32_t in, uint32_t out,
+                      uint32_t len, enum hash_algo algo);
 
 /* Declare small scatter gather safe buffer (size must be power of 2) */
 #define DECLARE_SG_SAFE_BUF(nm, sz) uint8_t nm[sz] __attribute__((aligned(sz)))
