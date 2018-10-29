@@ -99,6 +99,17 @@ static uint8_t* sram_base;
 #define CAAM_SMPO CAAM_BASE_ADDR + 0x1fbc
 #endif
 
+#ifdef MACH_IMX8Q
+/* imx8q Job Ring 3 registers */
+#define CAAM_IRBAR3 (0x40004 + caam_base)
+#define CAAM_IRSR3 (0x4000c + caam_base)
+#define CAAM_IRJAR3 (0x4001c + caam_base)
+#define CAAM_ORBAR3 (0x40024 + caam_base)
+#define CAAM_ORSR3 (0x4002c + caam_base)
+#define CAAM_ORSFR3 (0x4003c + caam_base)
+#define CAAM_ORJRR3 (0x40034 + caam_base)
+#endif
+
 #define JRCFG_LS_IMSK 0x00000001
 #define JR_MID 2
 #define KS_G1 (1 << JR_MID)

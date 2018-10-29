@@ -29,7 +29,6 @@ trusty_app_manifest_t TRUSTY_APP_MANIFEST_ATTRS trusty_app_manifest = {
                 {
                         /* Max HEAP size */
                         TRUSTY_APP_CONFIG_MIN_HEAP_SIZE(2 * 4096),
-#if !defined(MACH_IMX8Q)
                         /* MMIO regions */
                         TRUSTY_APP_CONFIG_MAP_MEM(CAAM_MMIO_ID,
                                                   CAAM_PHY_BASE_ADDR,
@@ -37,7 +36,6 @@ trusty_app_manifest_t TRUSTY_APP_MANIFEST_ATTRS trusty_app_manifest = {
                         TRUSTY_APP_CONFIG_MAP_MEM(CAAM_SEC_RAM_MMIO_ID,
                                                   CAAM_PHY_ARB_BASE_ADDR,
                                                   CAAM_SEC_RAM_SIZE),
-#endif
 #if defined(MACH_IMX7D)
                         TRUSTY_APP_CONFIG_MAP_MEM(CCM_MMIO_ID,
                                                   CCM_PHY_BASE_ADDR,
