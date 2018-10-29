@@ -27,6 +27,7 @@
 #include "common.h"
 #include "hwkey_srv_priv.h"
 #include "hwrng_srv_priv.h"
+#include "hwcrypto_srv_priv.h"
 
 #define TLOG_TAG "hwcrypto"
 #include <trusty_log.h>
@@ -232,6 +233,7 @@ int main(void) {
 
     /* initialize service providers */
     hwrng_init_srv_provider();
+    hwcrypto_init_srv_provider();
     hwkey_init_srv_provider();
 
     TLOGD("enter main event loop\n");
