@@ -24,8 +24,10 @@ MODULE_SRCS := \
 	$(LOCAL_DIR)/main.c \
 	$(LOCAL_DIR)/hwrng_srv.c \
 	$(LOCAL_DIR)/hwkey_srv.c \
+	$(LOCAL_DIR)/hwcrypto_srv.c \
 	$(LOCAL_DIR)/hwkey_srv_provider.c \
 	$(LOCAL_DIR)/hwrng_srv_provider.c \
+	$(LOCAL_DIR)/hwcrypto_srv_provider.c \
 	$(LOCAL_DIR)/caam.c \
 
 MODULE_DEFINES := \
@@ -38,6 +40,7 @@ MODULE_DEPS := \
 	trusty/user/base/lib/libc-trusty \
 	trusty/user/base/interface/hwrng \
 	trusty/user/base/interface/hwkey \
+	trusty/user/base/interface/hwcrypto \
 	external/boringssl \
 
 include make/module.mk
