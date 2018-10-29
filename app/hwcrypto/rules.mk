@@ -37,12 +37,6 @@ MODULE_SRCS := \
 MODULE_DEFINES := \
 	TLOG_LVL_DEFAULT=2 \
 
-ifeq (imx8q, $(TARGET))
-MODULE_DEFINES += \
-	SOFTWARE_CRYPTO=1
-endif
-
-
 MODULE_INCLUDES := \
 	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include
 
