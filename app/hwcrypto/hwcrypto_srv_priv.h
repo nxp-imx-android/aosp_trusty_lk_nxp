@@ -20,11 +20,24 @@
 #include <lk/compiler.h>
 #include "caam.h"
 
+/**
+ * @plain_pa:  physical start address of the plain blob buf.
+ * @plain_size:   size of the plain blob.
+ * @blob: physical start addrss of the output buf.
+ */
+typedef struct hwcrypto_blob_msg {
+    uint32_t plain_pa;
+    uint32_t plain_size;
+    uint32_t blob_pa;
+} hwcrypto_blob_msg;
+
 __BEGIN_CDECLS
 
 void hwcrypto_init_srv_provider(void);
 int hwcrypto_start_service(void);
 int calculate_hash(uint32_t in_paddr, uint32_t in_len,
                    uint32_t out_paddr, enum hash_algo algo);
+int caam_encap_blob(uint32_t plain_pa, uint32_t size,
+                    uint32_t blob_pa);
 
 __END_CDECLS
