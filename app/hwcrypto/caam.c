@@ -367,6 +367,40 @@ uint32_t caam_decap_blob(const uint8_t* kmod,
     return CAAM_SUCCESS;
 }
 
+/* Use CAAM to encapsulate blob, all input/output buffer
+ * address should be physical address.
+ */
+uint32_t caam_gen_blob_pa(uint32_t kmod_pa,
+                          size_t kmod_size,
+                          uint32_t plain_pa,
+                          uint32_t blob_pa,
+                          uint32_t size) {
+    assert(size + CAAM_KB_HEADER_LEN < 0xFFFFu);
+    assert(kmod_size == 16);
+
+    g_job->dsc[0] = 0xB0800008;
+    g_job->dsc[1] = 0x14400010;
+    g_job->dsc[2] = kmod_pa;
+    g_job->dsc[3] = 0xF0000000 | (0x0000ffff & (size));
+    g_job->dsc[4] = plain_pa;
+    g_job->dsc[5] = 0xF8000000 | (0x0000ffff & (size + CAAM_KB_HEADER_LEN));
+    g_job->dsc[6] = blob_pa;
+    g_job->dsc[7] = 0x870D0000;
+    g_job->dsc_used = 8;
+
+    run_job(g_job);
+
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x)\n", g_job->status);
+        return CAAM_FAILURE;
+    }
+
+    return CAAM_SUCCESS;
+}
+
+/* Use CAAM to encapsulate blob, all input/output buffer
+ * address should be virtual address.
+ */
 uint32_t caam_gen_blob(const uint8_t* kmod,
                        size_t kmod_size,
                        const uint8_t* plain,
@@ -403,20 +437,8 @@ uint32_t caam_gen_blob(const uint8_t* kmod,
     }
     blob_pa = (uint32_t)pmem.paddr;
 
-    g_job->dsc[0] = 0xB0800008;
-    g_job->dsc[1] = 0x14400010;
-    g_job->dsc[2] = kmod_pa;
-    g_job->dsc[3] = 0xF0000000 | (0x0000ffff & (size));
-    g_job->dsc[4] = plain_pa;
-    g_job->dsc[5] = 0xF8000000 | (0x0000ffff & (size + CAAM_KB_HEADER_LEN));
-    g_job->dsc[6] = blob_pa;
-    g_job->dsc[7] = 0x870D0000;
-    g_job->dsc_used = 8;
-
-    run_job(g_job);
-
-    if (g_job->status & JOB_RING_STS) {
-        TLOGE("job failed (0x%08x)\n", g_job->status);
+    if (caam_gen_blob_pa(kmod_pa, kmod_size, plain_pa, blob_pa, size)
+                         != CAAM_SUCCESS) {
         return CAAM_FAILURE;
     }
 
