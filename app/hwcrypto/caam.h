@@ -75,6 +75,11 @@ void* caam_get_keybox(void);
 uint32_t caam_hash_pa(uint32_t in, uint32_t out,
                       uint32_t len, enum hash_algo algo);
 
+uint32_t caam_gen_blob_pa(uint32_t kmod_pa,
+                          size_t kmod_size,
+                          uint32_t plain_pa,
+                          uint32_t blob_pa,
+                          uint32_t size);
 /* Declare small scatter gather safe buffer (size must be power of 2) */
 #define DECLARE_SG_SAFE_BUF(nm, sz) uint8_t nm[sz] __attribute__((aligned(sz)))
 
