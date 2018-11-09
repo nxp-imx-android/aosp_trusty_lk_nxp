@@ -106,7 +106,7 @@ static void setup_job_rings(void) {
 
     /* Initialize job ring addresses */
     memset(g_rings, 0, sizeof(*g_rings));
-    rc = prepare_dma(g_rings, sizeof(g_rings), DMA_FLAG_TO_DEVICE, &pmem);
+    rc = prepare_dma(g_rings, sizeof(*g_rings), DMA_FLAG_TO_DEVICE, &pmem);
     if (rc != 1) {
         TLOGE("prepare_dma failed: %d\n", rc);
         abort();
