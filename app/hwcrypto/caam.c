@@ -519,10 +519,27 @@ uint32_t caam_hwrng(uint8_t* out, size_t len) {
             return CAAM_FAILURE;
         }
 
+        if (caam_hwrng_pa(pmem.paddr, pmem.size) != CAAM_SUCCESS)
+            return CAAM_FAILURE;
+
+        finish_dma(out, pmem.size, DMA_FLAG_FROM_DEVICE);
+
+        len -= pmem.size;
+        out += pmem.size;
+    }
+
+    return CAAM_SUCCESS;
+}
+
+/* Generate "len" length rng and put it to "buf_pa". The buf_pa should
+ * be physical address.
+ * */
+uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len)
+{
         g_job->dsc[0] = 0xB0800004;
         g_job->dsc[1] = 0x82500000;
-        g_job->dsc[2] = 0x60340000 | (0x0000ffff & pmem.size);
-        g_job->dsc[3] = (uint32_t)pmem.paddr;
+        g_job->dsc[2] = 0x60340000 | (0x0000ffff & len);
+        g_job->dsc[3] = (uint32_t)buf_pa;
         g_job->dsc_used = 4;
 
         run_job(g_job);
@@ -531,12 +548,6 @@ uint32_t caam_hwrng(uint8_t* out, size_t len) {
             TLOGE("job failed (0x%08x)\n", g_job->status);
             return CAAM_FAILURE;
         }
-
-        finish_dma(out, pmem.size, DMA_FLAG_FROM_DEVICE);
-
-        len -= pmem.size;
-        out += pmem.size;
-    }
 
     return CAAM_SUCCESS;
 }
