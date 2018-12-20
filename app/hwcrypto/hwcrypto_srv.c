@@ -158,6 +158,37 @@ fail:
 }
 
 /*
+ * Handle rng generate command
+ */
+static int hwcrypto_gen_rng(struct hwcrypto_chan_ctx* ctx,
+                               struct hwcrypto_msg* hdr,
+                               uint8_t *req_data,
+                               size_t req_data_len)
+{
+    assert(hdr);
+    assert(req_data);
+
+    /* sanity check the req length */
+    if (req_data_len < sizeof(hwcrypto_rng_msg)) {
+        hdr->status = HWCRYPTO_ERROR_INVALID;
+        goto fail;
+    }
+
+    hwcrypto_rng_msg *msg = (hwcrypto_rng_msg *)req_data;
+    if (msg->buf == 0) {
+        hdr->status = HWCRYPTO_ERROR_INVALID;
+        goto fail;
+    }
+
+    /* use caam to generate 'len' length rng and put it into 'buf'.
+     */
+    hdr->status = gen_rng(msg->buf, msg->len);
+
+fail:
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
+/*
  *  Read and queue HWCRYPTO request message
  */
 static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
@@ -183,6 +214,10 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
 
     case HWCRYPTO_ENCAP_BLOB:
         rc = hwcrypto_encap_blob(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_GEN_RNG:
+        rc = hwcrypto_gen_rng(ctx, &hdr, req_data, req_data_len);
         break;
 
     default:
