@@ -65,6 +65,13 @@ int calculate_hash(uint32_t in_paddr, uint32_t in_len,
 	    return HWCRYPTO_ERROR_NONE;
 }
 
+int gen_rng(uint32_t buf, uint32_t len) {
+    if (caam_hwrng_pa(buf, len) != 0)
+        return HWCRYPTO_ERROR_INTERNAL;
+    else
+        return HWCRYPTO_ERROR_NONE;
+}
+
 void hwcrypto_init_srv_provider(void) {
     int rc;
 

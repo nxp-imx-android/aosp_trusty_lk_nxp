@@ -31,6 +31,15 @@ typedef struct hwcrypto_blob_msg {
     uint32_t blob_pa;
 } hwcrypto_blob_msg;
 
+/**
+ * @buf:  physical start address of the output rng buf.
+ * @len:  size of required rng.
+ */
+typedef struct hwcrypto_rng_msg {
+    uint32_t buf;
+    uint32_t len;
+} hwcrypto_rng_msg;
+
 __BEGIN_CDECLS
 
 void hwcrypto_init_srv_provider(void);
@@ -39,5 +48,6 @@ int calculate_hash(uint32_t in_paddr, uint32_t in_len,
                    uint32_t out_paddr, enum hash_algo algo);
 int caam_encap_blob(uint32_t plain_pa, uint32_t size,
                     uint32_t blob_pa);
+int gen_rng(uint32_t buf, uint32_t len);
 
 __END_CDECLS
