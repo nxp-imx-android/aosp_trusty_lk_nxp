@@ -24,8 +24,38 @@
 #include <dev/uart.h>
 #include <kernel/thread.h>
 #include <platform/debug.h>
+#include <lib/sm/smcall.h>
+#include <lib/sm.h>
+#include <lk/init.h>
 
+#define SMC_ENTITY_CONSOLE 52
+#define SMC_SC_SHARED_CONSOLE_CTL SMC_STDCALL_NR(SMC_ENTITY_CONSOLE, 0)
+#define TRUSTY_CONSOLE_DISABLE 0
+#define TRUSTY_CONSOLE_ENABLE 1
+bool no_console = false;
+
+static long console_stdcall(smc32_args_t* args) {
+    if (args->smc_nr == SMC_SC_SHARED_CONSOLE_CTL) {
+       if (args->params[1] == TRUSTY_CONSOLE_ENABLE) {
+           no_console = false;
+       }  else {
+           no_console = true;
+       }
+    }
+    return 0;
+}
+
+static smc32_entity_t console_entity = {
+    .stdcall_handler = console_stdcall,
+};
+
+void console_smcall_init(uint level) {
+    no_console = false;
+    sm_register_entity(SMC_ENTITY_CONSOLE, &console_entity);
+}
 void platform_dputc(char c) {
+    if (no_console)
+        return;
     uart_putc(0, c);
 }
 
@@ -37,3 +67,4 @@ int platform_dgetc(char* c, bool wait) {
 
     return res;
 }
+LK_INIT_HOOK(uart_console, console_smcall_init, LK_INIT_LEVEL_PLATFORM);
