@@ -263,9 +263,14 @@ int hwrng_start_service(void) {
     if (rc < 0) {
         TLOGE("Failed (%d) to create port '%s'\n", rc, HWRNG_SRV_NAME);
         return rc;
-    } else {
-        hwrng_port = (handle_t)rc;
-        set_cookie(hwrng_port, &hwrng_port_evt_handler);
+    }
+
+    hwrng_port = (handle_t)rc;
+    rc = set_cookie(hwrng_port, &hwrng_port_evt_handler);
+    if (rc) {
+        TLOGE("failed (%d) to set_cookie on port %d\n", rc, hwrng_port);
+        close(hwrng_port);
+        return rc;
     }
 
     return NO_ERROR;
