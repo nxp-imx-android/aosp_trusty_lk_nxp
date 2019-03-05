@@ -152,7 +152,7 @@ static void run_job(struct caam_job* job) {
     g_rings->out[1] = 0;
     g_rings->in[0] = job_pa;
 
-    ret = prepare_dma(g_rings, sizeof(g_rings), DMA_FLAG_TO_DEVICE, &pmem);
+    ret = prepare_dma(g_rings, sizeof(*g_rings), DMA_FLAG_TO_DEVICE, &pmem);
     assert(ret == 1);
 
     /* get clock */
