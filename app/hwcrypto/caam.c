@@ -232,6 +232,22 @@ int init_caam_env(void) {
         return ERR_NO_MEMORY;
     }
 
+#ifdef MACH_IMX8M
+    /* The JR0 is assigned to non-secure world by default in ATF, assign
+     * it to secure world here. */
+    uint32_t cfg_ms = 0;
+    uint32_t cfg_ls = 0;
+
+    cfg_ms = 0x1 << 0;  /* JRxDID_MS_PRIM_DID */
+    cfg_ms |= (0x1 << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
+    cfg_ms |= (0x1 << 16); /* JRxDID_MS_AMTD */
+    cfg_ms |= (0x1 << 19); /* JRxDID_MS_PRIM_ICID */
+    cfg_ms |= (0x1 << 31); /* JRxDID_MS_LDID */
+    cfg_ms |= (0x1 << 17); /* JRxDID_MS_LAMTD */
+
+    writel(cfg_ms, CAAM_JR0MIDR);
+    writel(cfg_ls, CAAM_JR0LIDR);
+#endif
 #ifdef MACH_IMX8Q
     /* imx8q caam init has been done by SECO. */
     /* Initialize job ring addresses */

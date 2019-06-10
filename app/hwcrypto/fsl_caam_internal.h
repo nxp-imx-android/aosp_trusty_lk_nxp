@@ -50,6 +50,7 @@ static uint8_t* sram_base;
 #define CAAM_MCFGR (0x0004 + caam_base)
 #define CAAM_SCFGR (0x000c + caam_base)
 #define CAAM_JR0MIDR (0x0010 + caam_base)
+#define CAAM_JR0LIDR (0x0014 + caam_base)
 #define CAAM_JR1MIDR (0x0018 + caam_base)
 #define CAAM_DECORR (0x009c + caam_base)
 #define CAAM_DECO0MID (0x00a0 + caam_base)
