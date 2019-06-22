@@ -728,6 +728,61 @@ uint32_t caam_gen_kdfv1_root_key(uint8_t* out, uint32_t size) {
     return CAAM_SUCCESS;
 }
 
+uint32_t caam_gen_bkek_key_pa(uint32_t out, uint32_t size) {
+    int ret;
+    uint32_t pa_keymod;
+    struct dma_pmem pmem;
+
+    assert(size == 32);
+
+    uint8_t keymod_buf[16] = {0};
+
+    ret = prepare_dma((void*)keymod_buf, size, DMA_FLAG_FROM_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    pa_keymod = (uint32_t)pmem.paddr;
+
+    g_job->dsc[0] = 0xB0800006;
+    g_job->dsc[1] = 0x14400010;
+    g_job->dsc[2] = pa_keymod;
+    g_job->dsc[3] = 0xF8000020;
+    g_job->dsc[4] = out;
+    g_job->dsc[5] = 0x870D0002;
+    g_job->dsc_used = 6;
+
+    run_job(g_job);
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x)\n", g_job->status);
+        return CAAM_FAILURE;
+    }
+
+    finish_dma((void *)out, size, DMA_FLAG_FROM_DEVICE);
+    return CAAM_SUCCESS;
+}
+
+uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size) {
+    int ret;
+    uint32_t pa;
+    struct dma_pmem pmem;
+
+    assert(size == 32);
+
+    ret = prepare_dma((void*)out, size, DMA_FLAG_FROM_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    pa = (uint32_t)pmem.paddr;
+
+    if (caam_gen_bkek_key_pa(pa, size) != CAAM_SUCCESS)
+	    return CAAM_FAILURE;
+
+    finish_dma((void *)out, size, DMA_FLAG_FROM_DEVICE);
+    return CAAM_SUCCESS;
+}
+
 #if WITH_CAAM_SELF_TEST
 
 /*
