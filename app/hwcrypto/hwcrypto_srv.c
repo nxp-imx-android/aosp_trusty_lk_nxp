@@ -189,6 +189,42 @@ fail:
 }
 
 /*
+ * Handle huk generate command
+ */
+static int hwcrypto_gen_bkek(struct hwcrypto_chan_ctx* ctx,
+                               struct hwcrypto_msg* hdr,
+                               uint8_t *req_data,
+                               size_t req_data_len)
+{
+    assert(hdr);
+    assert(req_data);
+
+    /* sanity check the req length */
+    if (req_data_len < sizeof(hwcrypto_bkek_msg)) {
+        hdr->status = HWCRYPTO_ERROR_INVALID;
+        goto fail;
+    }
+
+    hwcrypto_bkek_msg *msg = (hwcrypto_bkek_msg *)req_data;
+    if (msg->buf == 0) {
+        hdr->status = HWCRYPTO_ERROR_INVALID;
+        goto fail;
+    }
+
+    /* use caam to generate 'len' length rng and put it into 'buf'.
+     */
+#if ENABLE_BKEK_GENERATION
+    hdr->status = gen_bkek(msg->buf, msg->len);
+#else
+    TLOGE("Error, please set 'ENABLE_BKEK_GENERATION' to generate bkek with CAAM.\n");
+    hdr->status = HWCRYPTO_ERROR_INVALID;
+#endif
+
+fail:
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
+/*
  *  Read and queue HWCRYPTO request message
  */
 static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
@@ -218,6 +254,10 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
 
     case HWCRYPTO_GEN_RNG:
         rc = hwcrypto_gen_rng(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_GEN_BKEK:
+        rc = hwcrypto_gen_bkek(ctx, &hdr, req_data, req_data_len);
         break;
 
     default:
