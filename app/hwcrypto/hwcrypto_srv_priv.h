@@ -40,6 +40,15 @@ typedef struct hwcrypto_rng_msg {
     uint32_t len;
 } hwcrypto_rng_msg;
 
+/**
+ * @buf:  physical start address of the output huk buf.
+ * @len:  size of required rng.
+ */
+typedef struct hwcrypto_bkek_msg {
+    uint32_t buf;
+    uint32_t len;
+} hwcrypto_bkek_msg;
+
 __BEGIN_CDECLS
 
 void hwcrypto_init_srv_provider(void);
@@ -49,5 +58,7 @@ int calculate_hash(uint32_t in_paddr, uint32_t in_len,
 int caam_encap_blob(uint32_t plain_pa, uint32_t size,
                     uint32_t blob_pa);
 int gen_rng(uint32_t buf, uint32_t len);
+
+int gen_bkek(uint32_t buf, uint32_t len);
 
 __END_CDECLS
