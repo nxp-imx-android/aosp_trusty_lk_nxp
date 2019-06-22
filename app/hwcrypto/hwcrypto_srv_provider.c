@@ -72,6 +72,13 @@ int gen_rng(uint32_t buf, uint32_t len) {
         return HWCRYPTO_ERROR_NONE;
 }
 
+int gen_bkek(uint32_t buf, uint32_t len) {
+    if (caam_gen_bkek_key_pa(buf, len) != 0)
+        return HWCRYPTO_ERROR_INTERNAL;
+    else
+        return HWCRYPTO_ERROR_NONE;
+}
+
 void hwcrypto_init_srv_provider(void) {
     int rc;
 
