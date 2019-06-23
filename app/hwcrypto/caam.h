@@ -88,6 +88,9 @@ uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len);
 uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size);
 uint32_t caam_gen_bkek_key_pa(uint32_t out, uint32_t size);
 
+uint32_t caam_gen_mppubk(uint32_t out);
+uint32_t caam_gen_mppubk_pa(uint32_t out);
+
 /* Declare small scatter gather safe buffer (size must be power of 2) */
 #define DECLARE_SG_SAFE_BUF(nm, sz) uint8_t nm[sz] __attribute__((aligned(sz)))
 

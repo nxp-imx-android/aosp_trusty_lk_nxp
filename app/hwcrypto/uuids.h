@@ -39,3 +39,11 @@
             0xb9, 0x94, 0x29, 0xe0, 0xe4, 0x78, 0xbd, 0x29 \
         }                                                  \
     }
+
+/* Keymaster Server APP UUID */
+#define KEYMASTER_SERVER_APP_UUID                          \
+    {                                                      \
+        0x5f902ace, 0x5e5c, 0x4cd8, {                      \
+            0xae, 0x54, 0x87, 0xb8, 0x8c, 0x22, 0xdd, 0xaf \
+        }                                                  \
+    }                                                      \
