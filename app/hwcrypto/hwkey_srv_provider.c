@@ -119,6 +119,35 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
 }
 
 /*
+ *  Manufacture Protection Public Key support
+ */
+#define MPPUB_KEY_SIZE 64
+#define MPPUB_KEY_ID "com.android.trusty.keymaster.mppubk"
+static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
+
+/*
+ * Fetch manufacture production key
+ */
+static uint32_t get_mppub_key(const struct hwkey_keyslot* slot,
+                                     uint8_t* kbuf,
+                                     size_t kbuf_len,
+                                     size_t* klen) {
+    uint32_t res;
+    assert(kbuf_len >= MPPUB_KEY_SIZE);
+
+    res = caam_gen_mppubk((uint32_t)kbuf);
+
+    if (res == CAAM_SUCCESS) {
+        *klen = MPPUB_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    } else {
+        /* wipe target buffer */
+        TLOGE("%s: failed to generate mppub key!\n", __func__);
+        memset(kbuf, 0, MPPUB_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    }
+}
+/*
  *  List of keys slots that hwkey service supports
  */
 static const struct hwkey_keyslot _keys[] = {
@@ -126,6 +155,11 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &ss_uuid,
                 .key_id = RPMB_SS_AUTH_KEY_ID,
                 .handler = get_rpmb_ss_auth_key,
+        },
+        {
+                .uuid = &km_uuid,
+                .key_id = MPPUB_KEY_ID,
+                .handler = get_mppub_key,
         },
 };
 
