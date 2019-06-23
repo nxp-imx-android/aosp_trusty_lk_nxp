@@ -48,6 +48,12 @@
 
 #define SHA1_DIGEST_LEN 20
 #define SHA256_DIGEST_LEN 32
+#define FSL_CAAM_MP_PUBK_BYTES 64
+#define PDB_MP_CSEL_SHIFT 17
+#define PDB_MP_CSEL_WIDTH 4
+#define PDB_MP_CSEL_P256 0x3 << PDB_MP_CSEL_SHIFT /* P-256 */
+#define PDB_MP_CSEL_P384 0x4 << PDB_MP_CSEL_SHIFT /* P-384 */
+#define PDB_MP_CSEL_P521 0x5 << PDB_MP_CSEL_SHIFT /* P-521 */
 
 struct caam_job_rings {
     uint32_t in[1];  /* single entry input ring */
@@ -779,6 +785,76 @@ uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size) {
 	    return CAAM_FAILURE;
 
     finish_dma((void *)out, size, DMA_FLAG_FROM_DEVICE);
+    return CAAM_SUCCESS;
+}
+
+uint32_t caam_gen_mppubk_pa(uint32_t out)
+{
+    g_job->dsc[0] = 0xB0840005;
+    g_job->dsc[1] = PDB_MP_CSEL_P256;
+    g_job->dsc[2] = out;
+    g_job->dsc[3] = 64;
+    g_job->dsc[4] = 0x86140000;
+    g_job->dsc_used = 5;
+
+    run_job(g_job);
+
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x)\n", g_job->status);
+        return CAAM_FAILURE;
+    }
+
+    return CAAM_SUCCESS;
+}
+
+uint32_t caam_gen_mppriv(void)
+{
+    int ret;
+    uint32_t pa;
+    struct dma_pmem pmem;
+    const char *passphrase = "manufacturing protection";
+
+    ret = prepare_dma((void*)passphrase, strlen(passphrase), DMA_FLAG_FROM_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    pa = (uint32_t)pmem.paddr;
+
+    g_job->dsc[0] = 0xB0840005;
+    g_job->dsc[1] = PDB_MP_CSEL_P256;
+    g_job->dsc[2] = pa;
+    g_job->dsc[3] = strlen(passphrase);
+    g_job->dsc[4] = 0x87140000;
+    g_job->dsc_used = 5;
+
+    run_job(g_job);
+
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x)\n", g_job->status);
+        return CAAM_FAILURE;
+    }
+
+    return CAAM_SUCCESS;
+}
+
+uint32_t caam_gen_mppubk(uint32_t out)
+{
+    int ret;
+    uint32_t pa;
+    struct dma_pmem pmem;
+
+    ret = prepare_dma((void*)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return CAAM_FAILURE;
+    }
+    pa = (uint32_t)pmem.paddr;
+
+    if (caam_gen_mppubk_pa(pa) != CAAM_SUCCESS)
+        return CAAM_FAILURE;
+
+    finish_dma((void *)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE);
     return CAAM_SUCCESS;
 }
 

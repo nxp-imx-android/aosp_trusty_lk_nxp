@@ -15,6 +15,11 @@
             "name": "SECURE_STORAGE_SERVER_APP_UUID",
             "value": "cea8706d-6cb4-49f3-b994-29e0e478bd29",
             "type": "uuid"
+        },
+        {
+            "name": "KEYMASTER_SERVER_APP_UUID",
+            "value": "5f902ace-5e5c-4cd8-ae54-87b88c22ddaf",
+            "type": "uuid"
         }
     ]
 }
