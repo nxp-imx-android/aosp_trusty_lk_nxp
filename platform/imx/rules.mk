@@ -62,6 +62,10 @@ else
 MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_uart.c
 endif
+ifeq (true,$(call TOBOOL,$(WITH_SNVS_DRIVER)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/imx_snvs.c
+endif
 
 #include SOC specific rules if they exists
 -include $(LOCAL_DIR)/soc/$(PLATFORM_SOC)/rules.mk
