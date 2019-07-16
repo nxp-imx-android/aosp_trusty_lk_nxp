@@ -43,4 +43,6 @@ uint32_t derive_key_v1(const uuid_t* uuid,
                        uint8_t* key_data,
                        size_t* key_len);
 
+uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out);
+
 __END_CDECLS
