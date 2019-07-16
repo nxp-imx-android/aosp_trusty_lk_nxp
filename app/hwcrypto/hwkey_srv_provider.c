@@ -44,7 +44,24 @@ static const uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
 #endif
 
+/*
+ *  Manufacture Protection Public Key support
+ */
+#define MPPUB_KEY_SIZE 64
+#define MPPUB_KEY_ID "com.android.trusty.keymaster.mppubk"
+static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
+
+
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
+
+uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
+    DECLARE_SG_SAFE_BUF(mppk, 64);
+    caam_gen_mppubk((uint32_t)mppk);
+
+    caam_aes_op(mppk, 16, enc, out, size, false);
+
+    return 0;
+}
 
 /*
  * Derive key V1 - HKDF based key derive.
@@ -117,13 +134,6 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
     }
 #endif
 }
-
-/*
- *  Manufacture Protection Public Key support
- */
-#define MPPUB_KEY_SIZE 64
-#define MPPUB_KEY_ID "com.android.trusty.keymaster.mppubk"
-static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 
 /*
  * Fetch manufacture production key
