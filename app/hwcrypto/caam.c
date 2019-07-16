@@ -792,7 +792,11 @@ uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size) {
 uint32_t caam_gen_mppubk_pa(uint32_t out)
 {
     g_job->dsc[0] = 0xB0840005;
+#ifdef MACH_IMX8Q
+    g_job->dsc[1] = PDB_MP_CSEL_P384;
+#else
     g_job->dsc[1] = PDB_MP_CSEL_P256;
+#endif
     g_job->dsc[2] = out;
     g_job->dsc[3] = 64;
     g_job->dsc[4] = 0x86140000;
@@ -823,7 +827,11 @@ uint32_t caam_gen_mppriv(void)
     pa = (uint32_t)pmem.paddr;
 
     g_job->dsc[0] = 0xB0840005;
+#ifdef MACH_IMX8Q
+    g_job->dsc[1] = PDB_MP_CSEL_P384;
+#else
     g_job->dsc[1] = PDB_MP_CSEL_P256;
+#endif
     g_job->dsc[2] = pa;
     g_job->dsc[3] = strlen(passphrase);
     g_job->dsc[4] = 0x87140000;
@@ -845,6 +853,9 @@ uint32_t caam_gen_mppubk(uint32_t out)
     uint32_t pa;
     struct dma_pmem pmem;
 
+#if IMX8M_OPEN_MPPUBK_DEBUG
+    caam_gen_mppriv();
+#endif
     ret = prepare_dma((void*)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE, &pmem);
     if (ret != 1) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
