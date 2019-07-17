@@ -36,6 +36,7 @@
 #include "tlog.h"
 
 #define HWCRYPTO_MAX_PAYLOAD_SIZE 2048
+static bool boot_state_locked = false;
 
 /**
  * hwcrypto_hash_msg - Serial header for communicating with hwcrypto server
@@ -239,6 +240,13 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         return rc;
     }
 
+    if (boot_state_locked) {
+        hdr.status = HWCRYPTO_ERROR_NONE;
+        TLOGE("Can't execute hwcrypto commands when boot state is locked.\n");
+        rc = hwcrypto_send_rsp(ctx, &hdr, NULL, 0);
+        return rc;
+    }
+
     /* calculate payload length */
     req_data_len = (size_t)rc - sizeof(hdr);
 
@@ -258,6 +266,12 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
 
     case HWCRYPTO_GEN_BKEK:
         rc = hwcrypto_gen_bkek(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_LOCK_BOOT_STATE:
+        boot_state_locked = true;
+        hdr.status = HWCRYPTO_ERROR_NONE;
+        rc = hwcrypto_send_rsp(ctx, &hdr, NULL, 0);
         break;
 
     default:
