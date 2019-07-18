@@ -30,6 +30,8 @@
 #define SNVS_LPCR_LPTA_EN       (1 << 1)
 #define SNVS_LPCR_LPWUI_EN      (1 << 3)
 #define SNVS_LPCR_DEP_EN        (1 << 5)
+#define SNVS_LPCR_TERN_OFF_POW  (0x60)
+#define SNVS_LPCR_BTN_PRESS_TIME (0x30000)
 
 static long snvs_regs_op(smc32_args_t* args) {
     u32 target = args->params[0];
@@ -80,6 +82,8 @@ static long snvs_lpcr_op(smc32_args_t* args) {
         case SNVS_LPCR_LPTA_EN:
         case SNVS_LPCR_LPWUI_EN:
         case SNVS_LPCR_DEP_EN:
+	case SNVS_LPCR_TERN_OFF_POW:
+	case SNVS_LPCR_BTN_PRESS_TIME:
             *REG32(SNVS_RTC_BASE + SNVS_LPCR) = val;
         default:
             return 0;
