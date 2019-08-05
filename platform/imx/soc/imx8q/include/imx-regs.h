@@ -76,4 +76,9 @@
 #define SECURE_RAM_START_ADDR_PHY CAAM_PHY_ARB_BASE_ADDR
 #define SECURE_RAM_START_ADDR CAAM_ARB_BASE_ADDR
 #define SECURE_RAM_SIZE 0x4000
+
+/* Base address and size of MU4 */
+#define SC_IPC_BASE    0x5d1f0000
+#define SC_IPC_SIZE    0x10000
+
 #endif

@@ -49,6 +49,7 @@ WITH_LIB_VERSION ?= 1
 
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/common/include \
+	$(LOCAL_DIR)/common/include/platform \
 	$(LOCAL_DIR)/soc/$(PLATFORM_SOC)/include \
 
 MODULE_INCLUDES += \
@@ -109,6 +110,21 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_vpu_enc.c
 endif
 
+ifeq (imx8q,$(TARGET))
+ifeq (true,$(call TOBOOL,$(WITH_SCFW_DRIVER)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/scfw/ipc.c \
+	$(LOCAL_DIR)/drivers/scfw/imx8_mu.c \
+	$(LOCAL_DIR)/drivers/scfw/imx8_test.c \
+	$(LOCAL_DIR)/drivers/scfw/irq/irq_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/misc/misc_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/pad/pad_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/pm/pm_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/rm/rm_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/seco/seco_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/scfw/timer/timer_rpc_clnt.c
+endif
+endif
 
 #include SOC specific rules if they exists
 -include $(LOCAL_DIR)/soc/$(PLATFORM_SOC)/rules.mk
