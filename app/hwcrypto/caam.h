@@ -40,6 +40,8 @@
 #define CAAM_SUCCESS 0
 #define CAAM_FAILURE 1
 
+#include "hwkey_keyslots.h"
+
 enum hash_algo {
     SHA1 = 0,
     SHA256
@@ -70,9 +72,9 @@ uint32_t caam_aes_op(const uint8_t* key,
 
 uint32_t caam_hwrng(uint8_t* output_ptr, uint32_t output_len);
 
-uint32_t caam_gen_kdfv1_root_key(uint8_t* out, size_t size);
+uint32_t caam_gen_kdfv1_root_key(uint8_t* out, uint32_t size);
 
-void* caam_get_keybox(void);
+void caam_get_keybox(struct keyslot_package *kbox);
 
 uint32_t caam_hash_pa(uint32_t in, uint32_t out,
                       uint32_t len, enum hash_algo algo);
