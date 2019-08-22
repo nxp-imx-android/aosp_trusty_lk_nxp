@@ -42,6 +42,7 @@
 #include <imx-regs.h>
 #include "caam.h"
 #include "fsl_caam_internal.h"
+#include "hwkey_keyslots.h"
 
 #define TLOG_LVL TLOG_LVL_DEFAULT
 #define TLOG_TAG "caam_drv"
@@ -531,7 +532,7 @@ uint32_t caam_aes_op(const uint8_t* key,
     return CAAM_SUCCESS;
 }
 
-uint32_t caam_hwrng(uint8_t* out, size_t len) {
+uint32_t caam_hwrng(uint8_t* out, uint32_t len) {
     int ret;
     struct dma_pmem pmem;
 
@@ -576,8 +577,15 @@ uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len)
     return CAAM_SUCCESS;
 }
 
-void* caam_get_keybox(void) {
-    return sram_base;
+void caam_get_keybox(struct keyslot_package *kbox) {
+
+    /* sram_base points to device memory which is mapped with mmap(),
+     * data fault may happen when use "ldur" to access such memory
+     * after 64bit userspace is enabled. Make a memcpy here to bypass
+     * this issue.
+     */
+    memcpy(kbox, sram_base, sizeof(struct keyslot_package));
+    return;
 }
 
 /* support SHA1 and SHA256 calculation, both input/output address should
@@ -646,7 +654,7 @@ uint32_t caam_hash(uint32_t in, uint32_t out,
     struct dma_pmem pmem;
 
     /* prepare dma and get input physical address */
-    ret = prepare_dma((void*)in, len, DMA_FLAG_TO_DEVICE, &pmem);
+    ret = prepare_dma((void*)(unsigned long)in, len, DMA_FLAG_TO_DEVICE, &pmem);
     if (ret != 1) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
@@ -655,10 +663,10 @@ uint32_t caam_hash(uint32_t in, uint32_t out,
 
     /* prepare dma and get output physical address */
     if (algo == SHA1)
-        ret = prepare_dma((void *)out, SHA1_DIGEST_LEN,
+        ret = prepare_dma((void *)(unsigned long)out, SHA1_DIGEST_LEN,
                           DMA_FLAG_FROM_DEVICE, &pmem);
     else if (algo == SHA256)
-        ret = prepare_dma((void *)out, SHA256_DIGEST_LEN,
+        ret = prepare_dma((void *)(unsigned long)out, SHA256_DIGEST_LEN,
                           DMA_FLAG_FROM_DEVICE, &pmem);
     else {
         TLOGE("unsupported hash algorithm!\n");
@@ -675,9 +683,9 @@ uint32_t caam_hash(uint32_t in, uint32_t out,
 	    return CAAM_FAILURE;
 
     if (algo == SHA1)
-        finish_dma((void *)out, SHA1_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
+        finish_dma((void *)(unsigned long)out, SHA1_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
     else if (algo == SHA256)
-        finish_dma((void *)out, SHA256_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
+        finish_dma((void *)(unsigned long)out, SHA256_DIGEST_LEN, DMA_FLAG_FROM_DEVICE);
     else {
         TLOGE("unsupported hash algorithm!\n");
         return CAAM_FAILURE;
@@ -693,7 +701,7 @@ uint32_t caam_gen_kdfv1_root_key(uint8_t* out, uint32_t size) {
 
     assert(size == 32);
 
-    ret = prepare_dma((void*)out, size, DMA_FLAG_FROM_DEVICE, &pmem);
+    ret = prepare_dma((void*)(unsigned long)out, size, DMA_FLAG_FROM_DEVICE, &pmem);
     if (ret != 1) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
@@ -764,7 +772,7 @@ uint32_t caam_gen_bkek_key_pa(uint32_t out, uint32_t size) {
         return CAAM_FAILURE;
     }
 
-    finish_dma((void *)out, size, DMA_FLAG_FROM_DEVICE);
+    finish_dma((void *)(unsigned long)out, size, DMA_FLAG_FROM_DEVICE);
     return CAAM_SUCCESS;
 }
 
@@ -775,7 +783,7 @@ uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size) {
 
     assert(size == 32);
 
-    ret = prepare_dma((void*)out, size, DMA_FLAG_FROM_DEVICE, &pmem);
+    ret = prepare_dma((void*)(unsigned long)out, size, DMA_FLAG_FROM_DEVICE, &pmem);
     if (ret != 1) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
@@ -785,7 +793,7 @@ uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size) {
     if (caam_gen_bkek_key_pa(pa, size) != CAAM_SUCCESS)
 	    return CAAM_FAILURE;
 
-    finish_dma((void *)out, size, DMA_FLAG_FROM_DEVICE);
+    finish_dma((void *)(unsigned long)out, size, DMA_FLAG_FROM_DEVICE);
     return CAAM_SUCCESS;
 }
 
@@ -856,7 +864,7 @@ uint32_t caam_gen_mppubk(uint32_t out)
 #if IMX8M_OPEN_MPPUBK_DEBUG
     caam_gen_mppriv();
 #endif
-    ret = prepare_dma((void*)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE, &pmem);
+    ret = prepare_dma((void*)(unsigned long)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE, &pmem);
     if (ret != 1) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
@@ -866,7 +874,7 @@ uint32_t caam_gen_mppubk(uint32_t out)
     if (caam_gen_mppubk_pa(pa) != CAAM_SUCCESS)
         return CAAM_FAILURE;
 
-    finish_dma((void *)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE);
+    finish_dma((void *)(unsigned long)out, FSL_CAAM_MP_PUBK_BYTES, DMA_FLAG_FROM_DEVICE);
     return CAAM_SUCCESS;
 }
 

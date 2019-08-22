@@ -176,18 +176,20 @@ static const struct hwkey_keyslot _keys[] = {
 
 static void unpack_kbox(void) {
     uint32_t res;
-    struct keyslot_package* kbox = caam_get_keybox();
+    struct keyslot_package* kbox = malloc(sizeof(struct keyslot_package));
+    caam_get_keybox(kbox);
 
     if (strncmp(kbox->magic, KEYPACK_MAGIC, 4)) {
         TLOGE("Invalid magic\n");
-	/* return earily */
-	return;
+        /* return earily */
+        goto fail;
     }
 
     /* Copy RPMB blob */
     assert(!rpmb_keyblob_len); /* key should be unset */
     if (kbox->rpmb_keyblob_len != sizeof(rpmb_keyblob)) {
         TLOGE("Unexpected RPMB key len: %u\n", kbox->rpmb_keyblob_len);
+        goto fail;
     } else {
         memcpy(rpmb_keyblob, kbox->rpmb_keyblob, kbox->rpmb_keyblob_len);
         rpmb_keyblob_len = kbox->rpmb_keyblob_len;
@@ -195,12 +197,12 @@ static void unpack_kbox(void) {
 
     /* generate kdfv1 root it should never fail */
     res = caam_gen_kdfv1_root_key(kdfv1_key, sizeof(kdfv1_key));
-    assert(res == CAAM_SUCCESS);
+    if (res != CAAM_SUCCESS)
+        TLOGE("Generate kdfv1 fail!\n");
 
-    /* copy pubkey blob */
-
-    /* wipe kbox in sram */
-    memset(kbox, 0, sizeof(*kbox));
+fail:
+    if (kbox != NULL)
+        free(kbox);
 }
 
 /*
