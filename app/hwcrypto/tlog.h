@@ -36,7 +36,7 @@
 
 #if TLOG_LVL >= TLOG_LVL_INFO
 #define TLOGI(fmt, ...) \
-    fprintf(stderr, "%s: %d: " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+    fprintf(stderr, "%s: " fmt, TLOG_TAG, ##__VA_ARGS__)
 #else
 #define TLOGI(fmt, ...)
 #endif
