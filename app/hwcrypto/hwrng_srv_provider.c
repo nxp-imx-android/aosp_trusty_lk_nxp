@@ -40,7 +40,7 @@ void hwrng_dev_get_rng_data(uint8_t* buf, size_t buf_len) {
 void hwrng_init_srv_provider(void) {
     int rc;
 
-    TLOGE("Init HWRNG service provider\n");
+    TLOGI("Init HWRNG service provider\n");
     /* Nothing to initialize here, just start service */
     rc = hwrng_start_service();
     if (rc != NO_ERROR) {
