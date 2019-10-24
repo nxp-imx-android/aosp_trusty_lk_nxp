@@ -103,9 +103,8 @@ static void generic_arm64_map_regs(const char* name,
 }
 
 static void platform_after_vm_init(uint level) {
-    generic_arm64_map_regs("gic", GIC_BASE_VIRT, GIC_BASE_PHY, GIC_REG_SIZE);
-
 #if defined(MACH_IMX7) || defined(MACH_IMX6)
+    generic_arm64_map_regs("gic", GIC_BASE_VIRT, GIC_BASE_PHY, GIC_REG_SIZE);
     /* Initialize the interrupt controller. */
     arm_gic_init();
 #endif
