@@ -82,7 +82,7 @@ int gen_bkek(uint32_t buf, uint32_t len) {
 void hwcrypto_init_srv_provider(void) {
     int rc;
 
-    TLOGE("Init HWCRYPTO service provider\n");
+    TLOGI("Init HWCRYPTO service provider\n");
     /* Nothing to initialize here, just start service */
     rc = hwcrypto_start_service();
     if (rc != NO_ERROR) {
