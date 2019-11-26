@@ -69,6 +69,7 @@
 
 #define GICC_SIZE (0x1000)
 #define GICD_SIZE (0x100)
+#define GICR_OFFSET (0x80000)
 
 #define SOC_REGS_PHY 0x20000000
 #ifdef ARCH_ARM64
