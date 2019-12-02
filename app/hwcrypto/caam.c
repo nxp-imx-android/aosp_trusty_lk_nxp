@@ -238,7 +238,7 @@ int init_caam_env(void) {
         return ERR_NO_MEMORY;
     }
 
-#ifdef MACH_IMX8M
+#if defined(MACH_IMX8MQ) | defined(MACH_IMX8MM)
     /* The JR0 is assigned to non-secure world by default in ATF, assign
      * it to secure world here. */
     uint32_t cfg_ms = 0;
