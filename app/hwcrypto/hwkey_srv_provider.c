@@ -180,7 +180,7 @@ static void unpack_kbox(void) {
     caam_get_keybox(kbox);
 
     if (strncmp(kbox->magic, KEYPACK_MAGIC, 4)) {
-        TLOGE("Invalid magic\n");
+        TLOGE("Invalid magic, unpack key package fail.\n");
         /* return earily */
         goto fail;
     }
