@@ -34,7 +34,7 @@
 #define TRUSTY_CONSOLE_ENABLE 1
 bool no_console = false;
 
-static long console_stdcall(smc32_args_t* args) {
+static long console_stdcall(struct smc32_args* args) {
     if (args->smc_nr == SMC_SC_SHARED_CONSOLE_CTL) {
        if (args->params[1] == TRUSTY_CONSOLE_ENABLE) {
            no_console = false;
@@ -45,7 +45,7 @@ static long console_stdcall(smc32_args_t* args) {
     return 0;
 }
 
-static smc32_entity_t console_entity = {
+static struct smc32_entity console_entity = {
     .stdcall_handler = console_stdcall,
 };
 
