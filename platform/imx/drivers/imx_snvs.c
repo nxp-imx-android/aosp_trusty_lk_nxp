@@ -33,7 +33,7 @@
 #define SNVS_LPCR_TERN_OFF_POW  (0x60)
 #define SNVS_LPCR_BTN_PRESS_TIME (0x30000)
 
-static long snvs_regs_op(smc32_args_t* args) {
+static long snvs_regs_op(struct smc32_args* args) {
     u32 target = args->params[0];
     u32 op = args->params[1];
     u32 val = args->params[2];
@@ -47,8 +47,9 @@ static long snvs_regs_op(smc32_args_t* args) {
         case SNVS_LPTAR:
         case SNVS_LPPGDR:
         case SNVS_HPSR_REG:
-                return *REG32(SNVS_RTC_BASE + target);
-            default:
+             return *REG32(SNVS_RTC_BASE + target);
+             break;
+        default:
                 return 0;
         }
     }
@@ -61,15 +62,17 @@ static long snvs_regs_op(smc32_args_t* args) {
         case SNVS_LPTAR:
         case SNVS_LPPGDR:
         case SNVS_HPSR_REG:
-            *REG32(SNVS_RTC_BASE + target) = val;
-            default:
+             *REG32(SNVS_RTC_BASE + target) = val;
+             return 0;
+             break;
+        default:
                 return 0;
         }
     }
     return 0;
 }
 
-static long snvs_lpcr_op(smc32_args_t* args) {
+static long snvs_lpcr_op(struct smc32_args* args) {
     u32 target = args->params[0];
     u32 enable = args->params[1];
     u32 val = *REG32(SNVS_RTC_BASE + SNVS_LPCR);
@@ -84,14 +87,16 @@ static long snvs_lpcr_op(smc32_args_t* args) {
         case SNVS_LPCR_DEP_EN:
 	case SNVS_LPCR_TERN_OFF_POW:
 	case SNVS_LPCR_BTN_PRESS_TIME:
-            *REG32(SNVS_RTC_BASE + SNVS_LPCR) = val;
+             *REG32(SNVS_RTC_BASE + SNVS_LPCR) = val;
+             return 0;
+             break;
         default:
             return 0;
     }
     return 0;
 }
 
-static long snvs_fastcall(smc32_args_t* args) {
+static long snvs_fastcall(struct smc32_args* args) {
 
     if (args->smc_nr == SMC_SNVS_REGS_OP) {
         return snvs_regs_op(args);
@@ -103,7 +108,7 @@ static long snvs_fastcall(smc32_args_t* args) {
     return 0;
 }
 
-static smc32_entity_t snvs_entity = {
+static struct smc32_entity snvs_entity = {
     .fastcall_handler = snvs_fastcall,
 };
 
