@@ -29,7 +29,7 @@
 
 #include "common.h"
 #include "hwcrypto_srv_priv.h"
-#include "uuids.h"
+#include <nxp_hwcrypto_uuid_consts.h>
 
 #define TLOG_LVL TLOG_LVL_DEFAULT
 #define TLOG_TAG "hwcrypto_srv"
