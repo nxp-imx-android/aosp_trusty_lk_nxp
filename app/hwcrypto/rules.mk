@@ -19,7 +19,7 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
-MANIFEST := $(LOCAL_DIR)/manifest.json
+MANIFEST := $(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwcrypto_manifest.json
 
 CONSTANTS := \
 	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwcrypto_memmap_consts.json \
