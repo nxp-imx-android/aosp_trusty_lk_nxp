@@ -51,9 +51,13 @@ GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/common/include \
 	$(LOCAL_DIR)/soc/$(PLATFORM_SOC)/include \
 
+MODULE_INCLUDES += \
+	$(TRUSTY_TOP)/trusty/kernel/services/smc/include \
+
 MODULE_SRCS := \
 	$(LOCAL_DIR)/debug.c \
 	$(LOCAL_DIR)/platform.c \
+	$(LOCAL_DIR)/smc_service_access_policy.c \
 
 ifeq (true,$(call TOBOOL,$(IMX_USE_LPUART)))
 MODULE_SRCS += \
