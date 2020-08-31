@@ -212,7 +212,7 @@ void hwkey_init_srv_provider(void) {
     int rc;
 #ifndef SOFTWARE_CRYPTO
 
-    TLOGI("Init HWKEY service provider\n");
+    TLOGD("Init HWKEY service provider\n");
 
     unpack_kbox();
 

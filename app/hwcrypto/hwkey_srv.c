@@ -348,7 +348,7 @@ int hwkey_start_service(void) {
     int rc;
     handle_t port;
 
-    TLOGI("Start HWKEY service\n");
+    TLOGD("Start HWKEY service\n");
 
     /* Initialize service */
     rc = port_create(HWKEY_PORT, 1,

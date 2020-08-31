@@ -255,7 +255,7 @@ static void hwrng_port_handler(const uevent_t* ev, void* priv) {
 int hwrng_start_service(void) {
     int rc;
 
-    TLOGI("Start HWRNG service\n");
+    TLOGD("Start HWRNG service\n");
 
     /* create HWRNG port */
     rc = port_create(HWRNG_SRV_NAME, 1, MAX_HWRNG_MSG_SIZE,

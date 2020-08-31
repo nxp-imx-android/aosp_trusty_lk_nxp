@@ -237,7 +237,7 @@ int main(void) {
     hwcrypto_init_srv_provider();
     hwkey_init_srv_provider();
 
-    TLOGI("enter main event loop\n");
+    TLOGD("enter main event loop\n");
 
     /* enter main event loop */
     while (true) {
