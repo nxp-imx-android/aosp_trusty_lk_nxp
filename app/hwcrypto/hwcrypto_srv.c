@@ -357,7 +357,7 @@ int hwcrypto_start_service(void) {
     int rc;
     handle_t port;
 
-    TLOGI("Start HWCRYPTO service\n");
+    TLOGD("Start HWCRYPTO service\n");
 
     /* Initialize service */
     rc = port_create(HWCRYPTO_PORT, 1, HWCRYPTO_MAX_PAYLOAD_SIZE,
