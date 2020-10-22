@@ -30,6 +30,7 @@
 #define _HWKEY_KEYSLOTS_H_
 
 #include "caam.h"
+#include "fsl_caam_internal.h"
 
 #define RPMBKEY_LEN (32 + CAAM_KB_HEADER_LEN)
 #define PUBKEY_LEN (1032 + CAAM_KB_HEADER_LEN)
