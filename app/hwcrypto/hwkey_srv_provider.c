@@ -52,6 +52,11 @@ static const uint8_t skeymod[16] __attribute__((aligned(16))) = {
 #define MPPUB_KEY_ID "com.android.trusty.keymaster.mppubk"
 static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 
+/*
+ * BKEK used as HBK
+ */
+#define HBK_KEY_SIZE 32
+#define HBK_KEY_ID "com.android.trusty.keymaster.hbk"
 
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
@@ -158,6 +163,29 @@ static uint32_t get_mppub_key(const struct hwkey_keyslot* slot,
         return HWKEY_ERR_GENERIC;
     }
 }
+
+/*
+ * Fetch BKEK to be used as HBK
+ */
+static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    uint32_t res;
+    assert(kbuf_len >= HBK_KEY_SIZE);
+
+    res = caam_gen_bkek_key((uint32_t)kbuf, HBK_KEY_SIZE);
+
+    if (res == CAAM_SUCCESS) {
+        *klen = HBK_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    } else {
+        /* wipe target buffer */
+        TLOGE("%s: failed to generate bkek key!\n", __func__);
+        memset(kbuf, 0, HBK_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    }
+}
 /*
  *  List of keys slots that hwkey service supports
  */
@@ -171,6 +199,11 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &km_uuid,
                 .key_id = MPPUB_KEY_ID,
                 .handler = get_mppub_key,
+        },
+        {
+                .uuid = &km_uuid,
+                .key_id = HBK_KEY_ID,
+                .handler = get_hbk_key,
         },
 };
 
