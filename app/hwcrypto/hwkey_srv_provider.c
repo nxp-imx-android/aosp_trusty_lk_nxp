@@ -61,7 +61,7 @@ static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
 uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
     DECLARE_SG_SAFE_BUF(mppk, 64);
-    caam_gen_mppubk((uint32_t)mppk);
+    caam_gen_mppubk((uint32_t)(intptr_t)mppk);
 
     caam_aes_op(mppk, 16, enc, out, size, false);
 
@@ -150,7 +150,7 @@ static uint32_t get_mppub_key(const struct hwkey_keyslot* slot,
     uint32_t res;
     assert(kbuf_len >= MPPUB_KEY_SIZE);
 
-    res = caam_gen_mppubk((uint32_t)kbuf);
+    res = caam_gen_mppubk((uint32_t)(intptr_t)kbuf);
 
     if (res == CAAM_SUCCESS) {
         *klen = MPPUB_KEY_SIZE;
@@ -173,7 +173,7 @@ static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
     uint32_t res;
     assert(kbuf_len >= HBK_KEY_SIZE);
 
-    res = caam_gen_bkek_key((uint32_t)kbuf, HBK_KEY_SIZE);
+    res = caam_gen_bkek_key((uint32_t)(intptr_t)kbuf, HBK_KEY_SIZE);
 
     if (res == CAAM_SUCCESS) {
         *klen = HBK_KEY_SIZE;

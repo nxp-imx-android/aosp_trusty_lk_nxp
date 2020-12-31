@@ -987,8 +987,8 @@ static void caam_hash_test(void) {
     memset(hash2, 0xAA, sizeof(hash2));
 
     /* invoke hash twice */
-    caam_hash((uint32_t)in, (uint32_t)hash1, sizeof(in), SHA256);
-    caam_hash((uint32_t)in, (uint32_t)hash2, sizeof(in), SHA256);
+    caam_hash((uint32_t)(intptr_t)in, (uint32_t)(intptr_t)hash1, sizeof(in), SHA256);
+    caam_hash((uint32_t)(intptr_t)in, (uint32_t)(intptr_t)hash2, sizeof(in), SHA256);
 
     /* compare results */
     if (memcmp(hash1, hash2, 32) != 0)
