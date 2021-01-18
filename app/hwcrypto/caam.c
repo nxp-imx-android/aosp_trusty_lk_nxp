@@ -824,7 +824,7 @@ uint32_t caam_gen_mppriv(void)
     int ret;
     uint32_t pa;
     struct dma_pmem pmem;
-    const char *passphrase = "manufacturing protection";
+    char passphrase[30] = "manufacturing protection";
 
     ret = prepare_dma((void*)passphrase, strlen(passphrase), DMA_FLAG_FROM_DEVICE, &pmem);
     if (ret != 1) {
