@@ -57,6 +57,12 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 #define HBK_KEY_SIZE 32
 #define HBK_KEY_ID "com.android.trusty.keymaster.hbk"
 
+/*
+ * KAK (Key Agreement Key)
+ */
+#define KAK_KEY_SIZE 32
+#define KAK_KEY_ID "com.android.trusty.keymint.kak"
+
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
 uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
@@ -185,6 +191,22 @@ static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
         return HWKEY_ERR_GENERIC;
     }
 }
+
+/*
+ * Return KAK as 0 because we don't support strongbox
+ */
+static uint32_t get_kak_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    assert(kbuf_len >= KAK_KEY_SIZE);
+
+    memset(kbuf, 0, KAK_KEY_SIZE);
+    *klen = KAK_KEY_SIZE;
+
+    return HWKEY_NO_ERROR;
+}
+
 /*
  *  List of keys slots that hwkey service supports
  */
@@ -203,6 +225,11 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &km_uuid,
                 .key_id = HBK_KEY_ID,
                 .handler = get_hbk_key,
+        },
+        {
+                .uuid = &km_uuid,
+                .key_id = KAK_KEY_ID,
+                .handler = get_kak_key,
         },
 };
 
