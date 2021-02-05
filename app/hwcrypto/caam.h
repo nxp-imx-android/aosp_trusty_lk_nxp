@@ -85,8 +85,9 @@ uint32_t caam_gen_blob_pa(uint32_t kmod_pa,
 
 uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len);
 
-uint32_t caam_gen_bkek_key(uint32_t out, uint32_t size);
-uint32_t caam_gen_bkek_key_pa(uint32_t out, uint32_t size);
+uint32_t caam_gen_bkek_key(const uint8_t* kmod, uint32_t kmod_size,
+                           uint32_t out, uint32_t size);
+uint32_t caam_gen_bkek_key_pa(uint32_t kmod, uint32_t out, uint32_t size);
 
 uint32_t caam_gen_mppubk(uint32_t out);
 uint32_t caam_gen_mppubk_pa(uint32_t out);
