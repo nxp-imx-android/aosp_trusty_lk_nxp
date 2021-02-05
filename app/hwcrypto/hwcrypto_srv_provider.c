@@ -73,7 +73,20 @@ int gen_rng(uint32_t buf, uint32_t len) {
 }
 
 int gen_bkek(uint32_t buf, uint32_t len) {
-    if (caam_gen_bkek_key_pa(buf, len) != 0)
+    int ret;
+    uint32_t kmod_pa;
+    struct dma_pmem pmem;
+
+    /* Get physical address of skeymod. */
+    ret = prepare_dma((void*)skeymod, sizeof(skeymod),
+                      DMA_FLAG_TO_DEVICE, &pmem);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        return HWCRYPTO_ERROR_INTERNAL;
+    }
+    kmod_pa = (uint32_t)pmem.paddr;
+
+    if (caam_gen_bkek_key_pa(kmod_pa, buf, len) != 0)
         return HWCRYPTO_ERROR_INTERNAL;
     else
         return HWCRYPTO_ERROR_NONE;

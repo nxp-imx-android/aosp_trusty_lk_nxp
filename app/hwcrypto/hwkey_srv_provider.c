@@ -38,11 +38,13 @@
 #define TLOG_TAG "hwkey_caam"
 #include <trusty_log.h>
 
-#ifndef SOFTWARE_CRYPTO
 static uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
         0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
-#endif
+
+static uint8_t skeymod_hbk[16] __attribute__((aligned(16))) = {
+        0x3b, 0xe9, 0x75, 0x28, 0xc4, 0x3a, 0x6d, 0x52,
+        0x42, 0x9c, 0x24, 0x1e, 0x07, 0xb0, 0x43, 0x1e};
 
 /*
  *  Manufacture Protection Public Key support
@@ -58,10 +60,22 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 #define HBK_KEY_ID "com.android.trusty.keymaster.hbk"
 
 /*
+ * BKEK used as HUK
+ */
+#define HUK_KEY_SIZE 32
+#define HUK_KEY_ID "com.android.trusty.storage_auth.huk"
+
+/*
  * KAK (Key Agreement Key)
  */
 #define KAK_KEY_SIZE 32
 #define KAK_KEY_ID "com.android.trusty.keymint.kak"
+
+/*
+ *  RPMB Key support
+ */
+#define RPMB_SS_AUTH_KEY_SIZE 32
+#define RPMB_SS_AUTH_KEY_ID "com.android.trusty.storage_auth.rpmb"
 
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
@@ -103,16 +117,11 @@ done:
     return res;
 }
 
-/*
- *  RPMB Key support
- */
-#define RPMB_SS_AUTH_KEY_SIZE 32
-#define RPMB_SS_AUTH_KEY_ID "com.android.trusty.storage_auth.rpmb"
-
 /* Secure storage service app uuid */
 static const uuid_t ss_uuid = SECURE_STORAGE_SERVER_APP_UUID;
 static size_t rpmb_keyblob_len;
 static uint8_t rpmb_keyblob[RPMBKEY_LEN];
+static bool rpmb_keyslot_valid = true;
 
 /*
  * Fetch RPMB Secure Storage Authentication key
@@ -129,20 +138,37 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
     uint32_t res;
     assert(kbuf_len >= RPMB_SS_AUTH_KEY_SIZE);
 
-    if (rpmb_keyblob_len != sizeof(rpmb_keyblob))
-        return HWKEY_ERR_NOT_FOUND; /* no RPMB key */
+    /* Get the rpmb key from keyslot if it's valid, otherwise return huk */
+    if (rpmb_keyslot_valid) {
+        if (rpmb_keyblob_len != sizeof(rpmb_keyblob))
+            return HWKEY_ERR_NOT_FOUND; /* no RPMB key */
 
-    res = caam_decap_blob(skeymod, sizeof(skeymod), kbuf, rpmb_keyblob,
-                          RPMB_SS_AUTH_KEY_SIZE);
-    if (res == CAAM_SUCCESS) {
-        *klen = RPMB_SS_AUTH_KEY_SIZE;
-        return HWKEY_NO_ERROR;
+        res = caam_decap_blob(skeymod, sizeof(skeymod), kbuf, rpmb_keyblob,
+                              RPMB_SS_AUTH_KEY_SIZE);
+        if (res == CAAM_SUCCESS)
+            *klen = RPMB_SS_AUTH_KEY_SIZE;
+        else {
+            /* wipe target buffer */
+            TLOGE("%s: failed to unpack rpmb key\n", __func__);
+            goto fail;
+        }
     } else {
-        /* wipe target buffer */
-        TLOGE("%s: failed to unpack rpmb key\n", __func__);
-        memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
-        return HWKEY_ERR_GENERIC;
+        res = caam_gen_bkek_key(skeymod, sizeof(skeymod),
+                                (uint32_t)(intptr_t)kbuf, HUK_KEY_SIZE);
+        if (res == CAAM_SUCCESS)
+            *klen = HUK_KEY_SIZE;
+        else {
+            TLOGE("%s: failed to generate huk!\n", __func__);
+            goto fail;
+        }
     }
+
+    return HWKEY_NO_ERROR;
+
+fail:
+    memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
+    return HWKEY_ERR_GENERIC;
+
 #endif
 }
 
@@ -170,7 +196,7 @@ static uint32_t get_mppub_key(const struct hwkey_keyslot* slot,
 }
 
 /*
- * Fetch BKEK to be used as HBK
+ * Derive the bkek as HBK
  */
 static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
                             uint8_t* kbuf,
@@ -179,19 +205,41 @@ static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
     uint32_t res;
     assert(kbuf_len >= HBK_KEY_SIZE);
 
-    res = caam_gen_bkek_key((uint32_t)(intptr_t)kbuf, HBK_KEY_SIZE);
+    res = caam_gen_bkek_key(skeymod_hbk, sizeof(skeymod_hbk), (uint32_t)(intptr_t)kbuf, HBK_KEY_SIZE);
 
     if (res == CAAM_SUCCESS) {
         *klen = HBK_KEY_SIZE;
         return HWKEY_NO_ERROR;
     } else {
         /* wipe target buffer */
-        TLOGE("%s: failed to generate bkek key!\n", __func__);
+        TLOGE("%s: failed to generate hbk!\n", __func__);
         memset(kbuf, 0, HBK_KEY_SIZE);
         return HWKEY_ERR_GENERIC;
     }
 }
 
+/*
+ * Derive the bkek as HUK
+ */
+static uint32_t get_huk_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    uint32_t res;
+    assert(kbuf_len >= HUK_KEY_SIZE);
+
+    res = caam_gen_bkek_key(skeymod, sizeof(skeymod), (uint32_t)(intptr_t)kbuf, HUK_KEY_SIZE);
+
+    if (res == CAAM_SUCCESS) {
+        *klen = HUK_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    } else {
+        /* wipe target buffer */
+        TLOGE("%s: failed to generate huk!\n", __func__);
+        memset(kbuf, 0, HUK_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    }
+}
 /*
  * Return KAK as 0 because we don't support strongbox
  */
@@ -231,35 +279,31 @@ static const struct hwkey_keyslot _keys[] = {
                 .key_id = KAK_KEY_ID,
                 .handler = get_kak_key,
         },
+        {
+                .uuid = &ss_uuid,
+                .key_id = HUK_KEY_ID,
+                .handler = get_huk_key,
+        },
 };
 
 static void unpack_kbox(void) {
-    uint32_t res;
     struct keyslot_package* kbox = malloc(sizeof(struct keyslot_package));
+
     caam_get_keybox(kbox);
-
     if (strncmp(kbox->magic, KEYPACK_MAGIC, 4)) {
-        TLOGE("Invalid magic, unpack key package fail.\n");
-        /* return earily */
-        goto fail;
-    }
-
-    /* Copy RPMB blob */
-    assert(!rpmb_keyblob_len); /* key should be unset */
-    if (kbox->rpmb_keyblob_len != sizeof(rpmb_keyblob)) {
-        TLOGE("Unexpected RPMB key len: %u\n", kbox->rpmb_keyblob_len);
-        goto fail;
+        rpmb_keyslot_valid = false;
     } else {
-        memcpy(rpmb_keyblob, kbox->rpmb_keyblob, kbox->rpmb_keyblob_len);
-        rpmb_keyblob_len = kbox->rpmb_keyblob_len;
+        /* Copy RPMB blob */
+        assert(!rpmb_keyblob_len); /* key should be unset */
+        if (kbox->rpmb_keyblob_len != sizeof(rpmb_keyblob)) {
+            TLOGE("Unexpected RPMB key len: %u\n", kbox->rpmb_keyblob_len);
+            rpmb_keyslot_valid = false;
+        } else {
+            memcpy(rpmb_keyblob, kbox->rpmb_keyblob, kbox->rpmb_keyblob_len);
+            rpmb_keyblob_len = kbox->rpmb_keyblob_len;
+        }
     }
 
-    /* generate kdfv1 root it should never fail */
-    res = caam_gen_kdfv1_root_key(kdfv1_key, sizeof(kdfv1_key));
-    if (res != CAAM_SUCCESS)
-        TLOGE("Generate kdfv1 fail!\n");
-
-fail:
     if (kbox != NULL)
         free(kbox);
 }
@@ -272,6 +316,13 @@ void hwkey_init_srv_provider(void) {
 #ifndef SOFTWARE_CRYPTO
 
     TLOGD("Init HWKEY service provider\n");
+
+    /* generate kdfv1 root, it should never fail */
+    rc = caam_gen_kdfv1_root_key(kdfv1_key, sizeof(kdfv1_key));
+    if (rc != CAAM_SUCCESS) {
+        TLOGE("Generate kdfv1 fail!\n");
+        abort();
+    }
 
     unpack_kbox();
 
