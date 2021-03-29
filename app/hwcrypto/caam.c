@@ -284,6 +284,8 @@ void caam_open(void) {
 
     /* if RNG already instantiated then skip it */
     if ((readl(CAAM_RDSTA) & RDSTA_IF0) != RDSTA_IF0) {
+        TLOGE("CAAM RNG should already be instantiated in SPL!\n");
+
         /* Enter TRNG Program mode */
         writel(RTMCTL_PGM, CAAM_RTMCTL);
 
@@ -562,11 +564,10 @@ uint32_t caam_hwrng(uint8_t* out, uint32_t len) {
 uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len)
 {
         g_job->dsc[0] = 0xB0800004;
-        g_job->dsc[1] = 0x82500000;
+        g_job->dsc[1] = 0x82500002;
         g_job->dsc[2] = 0x60340000 | (0x0000ffff & len);
         g_job->dsc[3] = (uint32_t)buf_pa;
         g_job->dsc_used = 4;
-
         run_job(g_job);
 
         if (g_job->status & JOB_RING_STS) {
