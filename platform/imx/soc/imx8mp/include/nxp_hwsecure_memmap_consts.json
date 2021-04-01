@@ -1,0 +1,29 @@
+{
+    "header": "nxp_memmap_consts.h",
+    "constants":[
+        {
+            "name": "CSU_BASE_ADDR",
+            "value": "0x303E0000",
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "CSU_REG_SIZE",
+            "value": "0x1000",
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "RDC_BASE_ADDR",
+            "value": "0x303D0000",
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "RDC_REG_SIZE",
+            "value": "0x1000",
+            "type": "int",
+            "unsigned": false
+        }
+    ]
+}
