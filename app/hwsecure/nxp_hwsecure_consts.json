@@ -1,0 +1,17 @@
+{
+    "header": "nxp_hwsecure_consts.h",
+    "constants": [
+        {
+            "name": "CSU_MMIO_ID",
+            "value": 5,
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "RDC_MMIO_ID",
+            "value": 6,
+            "type": "int",
+            "unsigned": false
+        }
+    ]
+}
