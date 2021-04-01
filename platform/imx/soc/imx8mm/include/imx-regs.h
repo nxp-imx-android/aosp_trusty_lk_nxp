@@ -94,4 +94,12 @@
 
 #define LCDIF_BASE_VIRT 0xFFFFFFFF32E00000
 
+
+#define CSU_BASE_VIRT 0xFFFFFFFF303E0000
+#define CSU_SA_LCDIF_ID 18
+#define CSU_CSL_LCDIF_ID 32
+
+#define CSL_DEFAULT      0xbb /* Secure USER/SPRV RD/WR + Non-secure SPRV RD/WR */
+#define CSL_SECURE_ONLY  0x3b /* Secure USER/SPRV RD/WR + Non-secure SPRV RD*/
+
 #endif

@@ -62,7 +62,8 @@ MODULE_SRCS := \
 
 ifeq (true,$(call TOBOOL,$(WITH_TUI_SUPPORT)))
 MODULE_SRCS += \
-	$(LOCAL_DIR)/drivers/imx_csu.c
+	$(LOCAL_DIR)/drivers/imx_csu.c \
+	$(LOCAL_DIR)/drivers/imx_lcdif.c
 endif
 
 ifeq (true,$(call TOBOOL,$(IMX_USE_LPUART)))
