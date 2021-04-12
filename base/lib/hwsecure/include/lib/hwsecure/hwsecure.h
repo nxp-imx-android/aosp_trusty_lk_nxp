@@ -9,6 +9,7 @@
 __BEGIN_CDECLS
 
 int set_lcdif_secure_access(int enable);
+int set_widevine_secure_mode(int secure);
 
 
 __END_CDECLS

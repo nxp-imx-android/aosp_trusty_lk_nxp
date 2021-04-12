@@ -14,4 +14,7 @@ int init_rdc(void);
 /* Configure CSU to make LCDIF work in secure mode */
 int set_lcdif_secure(uint32_t cmd);
 
+/* Configure RDC to support Widevine secure pipe */
+int set_widevine_secure_mode(uint32_t cmd);
+
 __END_CDECLS
