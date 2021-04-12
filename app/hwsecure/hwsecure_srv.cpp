@@ -29,6 +29,7 @@ static struct chan_uuid uuid_list[2] = {
     },
 };
 
+// 405729b4-c12d-45d9-ae97-0f25aaa204e4
 const static struct uuid secure_fb_impl_ta_uuid = {
     0x405729b4,
     0xc12d,
@@ -36,23 +37,27 @@ const static struct uuid secure_fb_impl_ta_uuid = {
     {0xae, 0x97, 0x0f, 0x25, 0xaa, 0xa2, 0x04, 0xe4},
 };
 
+// deb09cd6-7d65-4374-8e3a-63955a27279e
+const static struct uuid hwoemcrypto_ta_uuid = {
+    0xdeb09cd6,
+    0x7d65,
+    0x4374,
+    {0x8e, 0x3a, 0x63, 0x95, 0x5a, 0x27, 0x27, 0x9e},
+};
+
 static bool check_uuid_equal(const struct uuid* a, const struct uuid* b) {
     return memcmp(a, b, sizeof(struct uuid)) == 0;
 }
 
-static const struct uuid allowed_uuid[] = {
-                 {
-                     0x405729b4,
-                     0xc12d,
-                     0x45d9,
-                     {0xae, 0x97, 0x0f, 0x25, 0xaa, 0xa2, 0x04, 0xe4},
-                  },
+static const struct uuid *allow_uuids[] = {
+    &secure_fb_impl_ta_uuid,
+    &hwoemcrypto_ta_uuid,
 };
-static const struct uuid *acl_uuid = allowed_uuid;
+
 static struct tipc_port_acl acl = {
     .flags = IPC_PORT_ALLOW_TA_CONNECT,
-    .uuid_num = 1,
-    .uuids = &acl_uuid,
+    .uuid_num = 2,
+    .uuids = allow_uuids,
 };
 
 static struct tipc_port port = {
@@ -134,12 +139,20 @@ static int hwsecure_on_message(const struct tipc_port* port,
         case HWSECURE_LCDIF_SECURE_ACCESS:
         case HWSECURE_LCDIF_NON_SECURE_ACCESS:
             if (check_uuid_equal(&(ptr->peer), &secure_fb_impl_ta_uuid))
-                set_lcdif_secure(req.cmd);
+                return set_lcdif_secure(req.cmd);
             else {
                 TLOGE("UUID doesn't match!\n");
                 return ERR_GENERIC;
             }
             break;
+        case HWSECURE_WV_VPU_SECURE:
+        case HWSECURE_WV_VPU_NON_SECURE:
+                if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
+                    return set_widevine_secure_mode(req.cmd);
+                } else {
+                    TLOGE("UUID doesn't match!\n");
+                    return ERR_GENERIC;
+                }
         default:
             return ERR_INVALID_ARGS;
     }
