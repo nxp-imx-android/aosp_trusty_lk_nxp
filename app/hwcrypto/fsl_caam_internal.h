@@ -52,6 +52,8 @@ static uint8_t* sram_base;
 #define CAAM_JR0MIDR (0x0010 + caam_base)
 #define CAAM_JR0LIDR (0x0014 + caam_base)
 #define CAAM_JR1MIDR (0x0018 + caam_base)
+#define CAAM_JR2MIDR (0x0020 + caam_base)
+#define CAAM_JR2LIDR (0x0024 + caam_base)
 #define CAAM_DECORR (0x009c + caam_base)
 #define CAAM_DECO0MID (0x00a0 + caam_base)
 #define CAAM_DAR (0x0120 + caam_base)
@@ -90,6 +92,22 @@ static uint8_t* sram_base;
 #define CAAM_JRCR0 (0x106c + caam_base)
 #define CAAM_SMCJR0 (0x10f4 + caam_base)
 #define CAAM_SMCSJR0 (0x10fc + caam_base)
+/* Job Ring 2 registers */
+#define CAAM_IRBAR2 (0x3004 + caam_base)
+#define CAAM_IRSR2 (0x300c + caam_base)
+#define CAAM_IRSAR2 (0x3014 + caam_base)
+#define CAAM_IRJAR2 (0x301c + caam_base)
+#define CAAM_ORBAR2 (0x3024 + caam_base)
+#define CAAM_ORSR2 (0x302c + caam_base)
+#define CAAM_ORJRR2 (0x3034 + caam_base)
+#define CAAM_ORSFR2 (0x303c + caam_base)
+#define CAAM_JRSTAR2 (0x3044 + caam_base)
+#define CAAM_JRINTR2 (0x304c + caam_base)
+#define CAAM_JRCFGR2_MS (0x3050 + caam_base)
+#define CAAM_JRCFGR2_LS (0x3054 + caam_base)
+#define CAAM_IRRIR2 (0x305c + caam_base)
+#define CAAM_ORWIR2 (0x3064 + caam_base)
+#define CAAM_JRCR2 (0x306c + caam_base)
 #if 0
 #define CAAM_SMAPJR0(y) (CAAM_BASE_ADDR + 0x1104 + y * 16)
 #define CAAM_SMAG2JR0(y) (CAAM_BASE_ADDR + 0x1108 + y * 16)
@@ -109,6 +127,24 @@ static uint8_t* sram_base;
 #define CAAM_ORSR3 (0x4002c + caam_base)
 #define CAAM_ORSFR3 (0x4003c + caam_base)
 #define CAAM_ORJRR3 (0x40034 + caam_base)
+#endif
+
+#ifdef MACH_IMX8Q
+#define CAAM_IRBAR CAAM_IRBAR3
+#define CAAM_ORBAR CAAM_ORBAR3
+#define CAAM_IRSR  CAAM_IRSR3
+#define CAAM_ORSR  CAAM_ORSR3
+#define CAAM_IRJAR CAAM_IRJAR3
+#define CAAM_ORSFR CAAM_ORSFR3
+#define CAAM_ORJRR CAAM_ORJRR3
+#else
+#define CAAM_IRBAR CAAM_IRBAR2
+#define CAAM_ORBAR CAAM_ORBAR2
+#define CAAM_IRSR  CAAM_IRSR2
+#define CAAM_ORSR  CAAM_ORSR2
+#define CAAM_IRJAR CAAM_IRJAR2
+#define CAAM_ORSFR CAAM_ORSFR2
+#define CAAM_ORJRR CAAM_ORJRR2
 #endif
 
 #define JRCFG_LS_IMSK 0x00000001

@@ -118,28 +118,15 @@ static void setup_job_rings(void) {
         abort();
     }
 
-#ifdef MACH_IMX8Q
-    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use
-     * Job Ring 3 here.
-     */
+    /* Initialize job ring sizes */
     writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, in),
-           CAAM_IRBAR3);  // input ring address
+           CAAM_IRBAR);  // input ring address
     writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, out),
-           CAAM_ORBAR3);  // output ring address
+           CAAM_ORBAR);  // output ring address
 
     /* Initialize job ring sizes */
-    writel(countof(g_rings->in), CAAM_IRSR3);
-    writel(countof(g_rings->in), CAAM_ORSR3);
-#else
-    writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, in),
-           CAAM_IRBAR0);  // input ring address
-    writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, out),
-           CAAM_ORBAR0);  // output ring address
-
-    /* Initialize job ring sizes */
-    writel(countof(g_rings->in), CAAM_IRSR0);
-    writel(countof(g_rings->in), CAAM_ORSR0);
-#endif
+    writel(countof(g_rings->in), CAAM_IRSR);
+    writel(countof(g_rings->in), CAAM_ORSR);
 }
 
 static void run_job(struct caam_job* job) {
@@ -165,21 +152,10 @@ static void run_job(struct caam_job* job) {
     caam_clk_get();
 
     /* start job */
-    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use
-     * Job Ring 3 here.
-     */
-#ifdef MACH_IMX8Q
-    writel(1, CAAM_IRJAR3);
-#else
-    writel(1, CAAM_IRJAR0);
-#endif
+    writel(1, CAAM_IRJAR);
 
     /* Wait for job ring to complete the job: 1 completed job expected */
-#ifdef MACH_IMX8Q
-    while (readl(CAAM_ORSFR3) != 1)
-#else
-    while (readl(CAAM_ORSFR0) != 1)
-#endif
+    while (readl(CAAM_ORSFR) != 1)
         ;
 
     finish_dma(g_rings->out, sizeof(g_rings->out), DMA_FLAG_FROM_DEVICE);
@@ -190,11 +166,7 @@ static void run_job(struct caam_job* job) {
     job->status = g_rings->out[1];
 
     /* remove job */
-#ifdef MACH_IMX8Q
-    writel(1, CAAM_ORJRR3);
-#else
-    writel(1, CAAM_ORJRR0);
-#endif
+    writel(1, CAAM_ORJRR);
 }
 
 int init_caam_env(void) {
@@ -251,8 +223,8 @@ int init_caam_env(void) {
     cfg_ms |= (0x1 << 31); /* JRxDID_MS_LDID */
     cfg_ms |= (0x1 << 17); /* JRxDID_MS_LAMTD */
 
-    writel(cfg_ms, CAAM_JR0MIDR);
-    writel(cfg_ls, CAAM_JR0LIDR);
+    writel(cfg_ms, CAAM_JR2MIDR);
+    writel(cfg_ls, CAAM_JR2LIDR);
 #endif
 #ifdef MACH_IMX8Q
     /* imx8q caam init has been done by SECO. */
@@ -278,8 +250,8 @@ void caam_open(void) {
     setup_job_rings();
 
     /* HAB disables interrupts for JR0 so do the same here */
-    temp_reg = readl(CAAM_JRCFGR0_LS) | JRCFG_LS_IMSK;
-    writel(temp_reg, CAAM_JRCFGR0_LS);
+    temp_reg = readl(CAAM_JRCFGR2_LS) | JRCFG_LS_IMSK;
+    writel(temp_reg, CAAM_JRCFGR2_LS);
 
     /* if RNG already instantiated then skip it */
     if ((readl(CAAM_RDSTA) & RDSTA_IF0) != RDSTA_IF0) {
