@@ -256,6 +256,77 @@ static uint32_t get_kak_key(const struct hwkey_keyslot* slot,
 }
 
 /*
+ * Apploader key(s)
+ */
+struct apploader_key {
+    const uint8_t* key_data;
+
+    // Pointer to the symbol holding the size of the key.
+    // This needs to be a pointer because the size is not a
+    // constant known to the compiler at compile time,
+    // so it cannot be used to initialize the field directly.
+    const unsigned int* key_size_ptr;
+};
+
+#define INCLUDE_APPLOADER_KEY(key, key_file)   \
+    INCFILE(key##_data, key##_size, key_file); \
+    static struct apploader_key key = {        \
+            .key_data = key##_data,            \
+            .key_size_ptr = &key##_size,       \
+    };
+
+#undef APPLOADER_HAS_KEYS
+
+#ifdef APPLOADER_SIGN_PUBLIC_KEY_0_FILE
+INCLUDE_APPLOADER_KEY(apploader_sign_key_0, APPLOADER_SIGN_PUBLIC_KEY_0_FILE);
+#define APPLOADER_SIGN_KEY_0 "com.android.trusty.apploader.sign.key.0"
+#define APPLOADER_HAS_KEYS
+#endif
+
+#ifdef APPLOADER_SIGN_PUBLIC_KEY_1_FILE
+INCLUDE_APPLOADER_KEY(apploader_sign_key_1, APPLOADER_SIGN_PUBLIC_KEY_1_FILE);
+#define APPLOADER_SIGN_KEY_1 "com.android.trusty.apploader.sign.key.1"
+#define APPLOADER_HAS_KEYS
+#endif
+
+#ifdef APPLOADER_ENCRYPT_KEY_0_FILE
+INCLUDE_APPLOADER_KEY(apploader_encrypt_key_0, APPLOADER_ENCRYPT_KEY_0_FILE);
+#define APPLOADER_ENCRYPT_KEY_0 "com.android.trusty.apploader.encrypt.key.0"
+#define APPLOADER_HAS_KEYS
+#endif
+
+#ifdef APPLOADER_ENCRYPT_KEY_1_FILE
+INCLUDE_APPLOADER_KEY(apploader_encrypt_key_1, APPLOADER_ENCRYPT_KEY_1_FILE);
+#define APPLOADER_ENCRYPT_KEY_1 "com.android.trusty.apploader.encrypt.key.1"
+#define APPLOADER_HAS_KEYS
+#endif
+
+#ifdef APPLOADER_HAS_KEYS
+/* Apploader app uuid */
+static const uuid_t apploader_uuid = APPLOADER_APP_UUID;
+
+static uint32_t get_apploader_key(const struct hwkey_keyslot* slot,
+                                  uint8_t* kbuf,
+                                  size_t kbuf_len,
+                                  size_t* klen) {
+    assert(kbuf);
+    assert(klen);
+
+    struct apploader_key* key = (struct apploader_key*)slot->priv;
+    assert(key);
+    assert(key->key_size_ptr);
+
+    size_t key_size = (size_t)*key->key_size_ptr;
+    assert(kbuf_len >= key_size);
+
+    memcpy(kbuf, key->key_data, key_size);
+    *klen = key_size;
+
+    return HWKEY_NO_ERROR;
+}
+#endif
+
+/*
  *  List of keys slots that hwkey service supports
  */
 static const struct hwkey_keyslot _keys[] = {
@@ -284,6 +355,38 @@ static const struct hwkey_keyslot _keys[] = {
                 .key_id = HUK_KEY_ID,
                 .handler = get_huk_key,
         },
+#ifdef APPLOADER_SIGN_KEY_0
+        {
+                .uuid = &apploader_uuid,
+                .key_id = APPLOADER_SIGN_KEY_0,
+                .handler = get_apploader_key,
+                .priv = &apploader_sign_key_0,
+        },
+#endif
+#ifdef APPLOADER_SIGN_KEY_1
+        {
+                .uuid = &apploader_uuid,
+                .key_id = APPLOADER_SIGN_KEY_1,
+                .handler = get_apploader_key,
+                .priv = &apploader_sign_key_1,
+        },
+#endif
+#ifdef APPLOADER_ENCRYPT_KEY_0
+        {
+                .uuid = &apploader_uuid,
+                .key_id = APPLOADER_ENCRYPT_KEY_0,
+                .handler = get_apploader_key,
+                .priv = &apploader_encrypt_key_0,
+        },
+#endif
+#ifdef APPLOADER_ENCRYPT_KEY_1
+        {
+                .uuid = &apploader_uuid,
+                .key_id = APPLOADER_ENCRYPT_KEY_1,
+                .handler = get_apploader_key,
+                .priv = &apploader_encrypt_key_1,
+        },
+#endif
 };
 
 static void unpack_kbox(void) {

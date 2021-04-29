@@ -18,6 +18,11 @@
             "value": 10,
             "type": "int",
             "unsigned": false
+        },
+        {
+            "name": "APPLOADER_APP_UUID",
+            "value": "081ba88f-f1ee-452e-b5e8-a7e9ef173a97",
+            "type": "uuid"
         }
     ]
 }
