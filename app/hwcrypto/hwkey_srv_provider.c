@@ -34,6 +34,7 @@
 #include "common.h"
 #include "hwkey_keyslots.h"
 #include "hwkey_srv_priv.h"
+#include <lib/storage/storage.h>
 
 #define TLOG_TAG "hwkey_caam"
 #include <trusty_log.h>
@@ -76,6 +77,12 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
  */
 #define RPMB_SS_AUTH_KEY_SIZE 32
 #define RPMB_SS_AUTH_KEY_ID "com.android.trusty.storage_auth.rpmb"
+
+/*
+ *  Widevine keybox
+ */
+#define HWOEMCRYPTO_WV_KEYBOX_ID "com.android.trusty.hwoemcrypto.wvkeybox"
+static const uuid_t wv_uuid = HWOEMCRYPTO_SERVER_APP_UUID;
 
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 
@@ -256,6 +263,49 @@ static uint32_t get_kak_key(const struct hwkey_keyslot* slot,
 }
 
 /*
+ * Load the wv keybox form secure storage
+ */
+static const char* WvKeyBoxFilename = "wv.keybox";
+static uint32_t get_wv_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    storage_session_t session;
+    file_handle_t file_handle;
+    int rc = 0;
+
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to connect to storage TA!\n");
+        goto fail;
+    }
+
+    /* open file in secure storage */
+    rc = storage_open_file(session, &file_handle, WvKeyBoxFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to open keybox!\n");
+        storage_close_session(session);
+        goto fail;
+    }
+
+    /* read the keybox */
+    rc = storage_read(file_handle, 0, kbuf, kbuf_len);
+    storage_close_file(file_handle);
+    storage_close_session(session);
+
+fail:
+    if (rc <= 0) {
+        TLOGE("hwkey: keybox read failed!\n");
+        return HWKEY_ERR_GENERIC;
+    } else {
+        TLOGI("hwkey: keybox read successfully!\n");
+        *klen = rc;
+        return HWKEY_NO_ERROR;
+    }
+}
+
+/*
  * Apploader key(s)
  */
 struct apploader_key {
@@ -354,6 +404,11 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &ss_uuid,
                 .key_id = HUK_KEY_ID,
                 .handler = get_huk_key,
+        },
+        {
+                .uuid = &wv_uuid,
+                .key_id = HWOEMCRYPTO_WV_KEYBOX_ID,
+                .handler = get_wv_key,
         },
 #ifdef APPLOADER_SIGN_KEY_0
         {

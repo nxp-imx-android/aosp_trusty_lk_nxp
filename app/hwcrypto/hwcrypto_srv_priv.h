@@ -20,6 +20,12 @@
 #include <lk/compiler.h>
 #include "caam.h"
 
+#define BLOB_HEADER_MAGIC "!AT"
+struct wv_blob_header {
+    char magic[4];
+    uint32_t len;
+};
+
 /**
  * @plain_pa:  physical start address of the plain blob buf.
  * @plain_size:   size of the plain blob.
