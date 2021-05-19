@@ -29,7 +29,9 @@
 
 #include "common.h"
 #include "hwcrypto_srv_priv.h"
+#include "hwkey_srv_priv.h"
 #include <nxp_hwcrypto_uuid_consts.h>
+#include <lib/storage/storage.h>
 
 #define TLOG_LVL TLOG_LVL_DEFAULT
 #define TLOG_TAG "hwcrypto_srv"
@@ -225,6 +227,119 @@ fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
 }
 
+static const char* WvKeyBoxFilename = "wv.keybox";
+static int write_wv_key(uint8_t *data, uint32_t data_size) {
+    int rc = 0;
+    storage_session_t session;
+    file_handle_t file_handle;
+    storage_off_t file_size = 0;
+
+    /* write the wv key to secure storage */
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to connect to storage TA: %d!\n", rc);
+        return rc;
+    }
+
+    /* open file in secure storage */
+    rc = storage_open_file(session, &file_handle, WvKeyBoxFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to open keybox: %d!\n", rc);
+        storage_close_session(session);
+        return rc;
+    }
+
+    /* check if the keybox has been set before */
+    if (storage_get_file_size(file_handle, &file_size) < 0 || file_size != 0) {
+        TLOGE("hwcrypto: failed to get file size or the keybox has been provisioned!\n");
+        storage_close_file(file_handle);
+        storage_close_session(session);
+        return -1;
+    }
+
+    /* now do the write operation */
+    rc = storage_write(file_handle, 0, data, data_size, STORAGE_OP_COMPLETE);
+    storage_close_file(file_handle);
+    storage_close_session(session);
+
+    if (rc < 0 || rc != (int)data_size) {
+        TLOGE("hwcrypto: keybox write failed!\n");
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static int hwcrypto_provision_wv_key(struct hwcrypto_chan_ctx* ctx,
+                                     struct hwcrypto_msg* hdr,
+                                     uint8_t *req_data,
+                                     size_t req_data_len)
+{
+    uint8_t *data = NULL;
+    uint32_t data_size;
+    int rc = 0;
+
+    /* sanity check */
+    assert(hdr);
+    assert(req_data);
+
+   /* The wv key request should be "data_size + data" */
+    data_size = *((uint32_t *)req_data);
+    data = (uint8_t *)(req_data + sizeof(data_size));
+
+    rc = write_wv_key(data, data_size);
+    if (rc < 0)
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+    else
+        hdr->status = HWCRYPTO_ERROR_NONE;
+
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
+static int hwcrypto_provision_wv_key_enc(struct hwcrypto_chan_ctx* ctx,
+                                         struct hwcrypto_msg* hdr,
+                                         uint8_t *req_data,
+                                         size_t req_data_len) {
+    uint8_t *enc_data;
+    uint32_t enc_data_size;
+    struct wv_blob_header *header;
+    int rc = 0;
+    uint8_t data[HWCRYPTO_MAX_PAYLOAD_SIZE];
+
+    /* sanity check */
+    assert(hdr);
+    assert(req_data);
+
+   /* The wv key request should be "data_size + wv_blob_header + data" */
+    enc_data_size = *((uint32_t *)req_data);
+    header = (struct wv_blob_header *)(req_data + sizeof(enc_data_size));
+    enc_data = (uint8_t *)(req_data + sizeof(struct wv_blob_header) + sizeof(enc_data_size));
+
+    if (memcmp(BLOB_HEADER_MAGIC, header->magic, sizeof(BLOB_HEADER_MAGIC))) {
+        TLOGE("wv header magic doesn't match!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto fail;
+    }
+
+    /* perform wv keybox decryption */
+    if (mp_dec(enc_data, enc_data_size - sizeof(struct wv_blob_header), data)) {
+        TLOGE("failed to decrypt wv keybox!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto fail;
+    }
+
+    /* write to secure storage */
+    rc = write_wv_key(data, header->len);
+    if (rc < 0)
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+    else
+        hdr->status = HWCRYPTO_ERROR_NONE;
+
+fail:
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
 /*
  *  Read and queue HWCRYPTO request message
  */
@@ -272,6 +387,14 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         boot_state_locked = true;
         hdr.status = HWCRYPTO_ERROR_NONE;
         rc = hwcrypto_send_rsp(ctx, &hdr, NULL, 0);
+        break;
+
+    case HWCRYPTO_PROVISION_WV_KEY:
+        rc = hwcrypto_provision_wv_key(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_PROVISION_WV_KEY_ENC:
+        rc = hwcrypto_provision_wv_key_enc(ctx, &hdr, req_data, req_data_len);
         break;
 
     default:
