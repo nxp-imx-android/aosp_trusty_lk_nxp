@@ -76,6 +76,9 @@ endif
 ifeq (true,$(call TOBOOL,$(WITH_SNVS_DRIVER)))
 MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_snvs.c
+
+GLOBAL_DEFINES += \
+	USE_IMX_MONOTONIC_TIME=1
 endif
 
 #include SOC specific rules if they exists
