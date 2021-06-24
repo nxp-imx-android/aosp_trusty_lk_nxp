@@ -211,13 +211,17 @@ int init_caam_env(void) {
         return ERR_NO_MEMORY;
     }
 
-#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP) || defined(MACH_IMX8ULP)
     /* The JR0 is assigned to non-secure world by default in ATF, assign
      * it to secure world here. */
     uint32_t cfg_ms = 0;
     uint32_t cfg_ls = 0;
 
+#ifdef MACH_IMX8ULP
+    cfg_ms = 0x7 << 0;  /* JRxDID_MS_PRIM_DID */
+#else
     cfg_ms = 0x1 << 0;  /* JRxDID_MS_PRIM_DID */
+#endif
     cfg_ms |= (0x1 << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
     cfg_ms |= (0x1 << 16); /* JRxDID_MS_AMTD */
     cfg_ms |= (0x1 << 19); /* JRxDID_MS_PRIM_ICID */
