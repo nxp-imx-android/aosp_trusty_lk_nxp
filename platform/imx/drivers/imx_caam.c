@@ -8,10 +8,6 @@
 #include <kernel/mutex.h>
 #include <reg.h>
 
-/* Configuration and special key registers */
-#define CAAM_JR1MIDR (0x0018 + CAAM_BASE_ADDR)
-#define CAAM_JR1LIDR (0x001c + CAAM_BASE_ADDR)
-
 /* RNG registers */
 #define CAAM_RTMCTL (0x0600 + CAAM_BASE_ADDR)
 #define CAAM_RTSDCTL (0x0610 + CAAM_BASE_ADDR)
@@ -19,26 +15,43 @@
 #define CAAM_RTFRQMAX (0x061C + CAAM_BASE_ADDR)
 #define CAAM_RDSTA (0x06C0 + CAAM_BASE_ADDR)
 
-/* imx8m Job Ring 1 registers */
-#define CAAM_IRBAR1 (0x2004 + CAAM_BASE_ADDR)
-#define CAAM_IRSR1 (0x200c + CAAM_BASE_ADDR)
-#define CAAM_IRJAR1 (0x201c + CAAM_BASE_ADDR)
-#define CAAM_ORBAR1 (0x2024 + CAAM_BASE_ADDR)
-#define CAAM_ORSR1 (0x202c + CAAM_BASE_ADDR)
-#define CAAM_ORJRR1 (0x2034 + CAAM_BASE_ADDR)
-#define CAAM_ORSFR1 (0x203c + CAAM_BASE_ADDR)
-#define CAAM_JRCFGR1_MS (0x2050 + CAAM_BASE_ADDR)
-#define CAAM_JRCFGR1_LS (0x2054 + CAAM_BASE_ADDR)
-
 #ifdef MACH_IMX8Q
 /* imx8q Job Ring 2 registers */
-#define CAAM_IRBAR2 (0x30004 + CAAM_BASE_ADDR)
-#define CAAM_IRSR2 (0x3000c + CAAM_BASE_ADDR)
-#define CAAM_IRJAR2 (0x3001c + CAAM_BASE_ADDR)
-#define CAAM_ORBAR2 (0x30024 + CAAM_BASE_ADDR)
-#define CAAM_ORSR2 (0x3002c + CAAM_BASE_ADDR)
-#define CAAM_ORSFR2 (0x3003c + CAAM_BASE_ADDR)
-#define CAAM_ORJRR2 (0x30034 + CAAM_BASE_ADDR)
+#define CAAM_IRBAR (0x30004 + CAAM_BASE_ADDR)
+#define CAAM_IRSR (0x3000c + CAAM_BASE_ADDR)
+#define CAAM_IRJAR (0x3001c + CAAM_BASE_ADDR)
+#define CAAM_ORBAR (0x30024 + CAAM_BASE_ADDR)
+#define CAAM_ORSR (0x3002c + CAAM_BASE_ADDR)
+#define CAAM_ORSFR (0x3003c + CAAM_BASE_ADDR)
+#define CAAM_ORJRR (0x30034 + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_MS (0x30050 + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_LS (0x30054 + CAAM_BASE_ADDR)
+#elif defined(MACH_IMX8ULP)
+/* imx8ulp Job Ring 3 registers */
+#define CAAM_IRBAR (0x4004 + CAAM_BASE_ADDR)
+#define CAAM_IRSR (0x400c + CAAM_BASE_ADDR)
+#define CAAM_IRJAR (0x401c + CAAM_BASE_ADDR)
+#define CAAM_ORBAR (0x4024 + CAAM_BASE_ADDR)
+#define CAAM_ORSR (0x402c + CAAM_BASE_ADDR)
+#define CAAM_ORJRR (0x4034 + CAAM_BASE_ADDR)
+#define CAAM_ORSFR (0x403c + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_MS (0x4050 + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_LS (0x4054 + CAAM_BASE_ADDR)
+#define CAAM_JRMIDR (0x0028 + CAAM_BASE_ADDR)
+#define CAAM_JRLIDR (0x002c + CAAM_BASE_ADDR)
+#elif defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+/* imx8m Job Ring 1 registers */
+#define CAAM_IRBAR (0x2004 + CAAM_BASE_ADDR)
+#define CAAM_IRSR (0x200c + CAAM_BASE_ADDR)
+#define CAAM_IRJAR (0x201c + CAAM_BASE_ADDR)
+#define CAAM_ORBAR (0x2024 + CAAM_BASE_ADDR)
+#define CAAM_ORSR (0x202c + CAAM_BASE_ADDR)
+#define CAAM_ORJRR (0x2034 + CAAM_BASE_ADDR)
+#define CAAM_ORSFR (0x203c + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_MS (0x2050 + CAAM_BASE_ADDR)
+#define CAAM_JRCFGR_LS (0x2054 + CAAM_BASE_ADDR)
+#define CAAM_JRMIDR (0x0018 + CAAM_BASE_ADDR)
+#define CAAM_JRLIDR (0x001c + CAAM_BASE_ADDR)
 #endif
 
 #define RNG_INST_DESC1 0xB0800009
@@ -93,26 +106,14 @@ static void setup_job_rings(void) {
     memset(g_rings, 0, sizeof(*g_rings));
     g_rings_pa = vaddr_to_paddr((void *)g_rings);
 
-#ifdef MACH_IMX8Q
-    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use Job Ring 2 here. */
     writel((uint32_t)g_rings_pa + offsetof(struct caam_job_rings, in),
-           CAAM_IRBAR2);  // input ring address
+           CAAM_IRBAR);  // input ring address
     writel((uint32_t)g_rings_pa + offsetof(struct caam_job_rings, out),
-           CAAM_ORBAR2);  // output ring address
+           CAAM_ORBAR);  // output ring address
 
     /* Initialize job ring sizes */
-    writel(countof(g_rings->in), CAAM_IRSR2);
-    writel(countof(g_rings->in), CAAM_ORSR2);
-#else
-    writel((uint32_t)g_rings_pa + offsetof(struct caam_job_rings, in),
-           CAAM_IRBAR1);  // input ring address
-    writel((uint32_t)g_rings_pa + offsetof(struct caam_job_rings, out),
-           CAAM_ORBAR1);  // output ring address
-
-    /* Initialize job ring sizes */
-    writel(countof(g_rings->in), CAAM_IRSR1);
-    writel(countof(g_rings->in), CAAM_ORSR1);
-#endif
+    writel(countof(g_rings->in), CAAM_IRSR);
+    writel(countof(g_rings->in), CAAM_ORSR);
 }
 
 static void run_job(struct caam_job* job) {
@@ -129,19 +130,10 @@ static void run_job(struct caam_job* job) {
     arch_clean_cache_range((addr_t)g_rings, sizeof(*g_rings));
 
     /* start job */
-    /* imx8q Job Ring 0 and 1 are owned and reserved by SECO, use Job Ring 2 here. */
-#ifdef MACH_IMX8Q
-    writel(1, CAAM_IRJAR2);
-#else
-    writel(1, CAAM_IRJAR1);
-#endif
+    writel(1, CAAM_IRJAR);
 
     /* Wait for job ring to complete the job: 1 completed job expected */
-#ifdef MACH_IMX8Q
-    while (readl(CAAM_ORSFR2) != 1)
-#else
-    while (readl(CAAM_ORSFR1) != 1)
-#endif
+    while (readl(CAAM_ORSFR) != 1)
         ;
 
     arch_clean_invalidate_cache_range((addr_t)g_rings->out, sizeof(g_rings->out));
@@ -152,19 +144,15 @@ static void run_job(struct caam_job* job) {
     job->status = g_rings->out[1];
 
     /* remove job */
-#ifdef MACH_IMX8Q
-    writel(1, CAAM_ORJRR2);
-#else
-    writel(1, CAAM_ORJRR1);
-#endif
+    writel(1, CAAM_ORJRR);
 }
 
 void imx_caam_open(void) {
     uint32_t temp_reg;
 
     /* HAB disables interrupts for JR0 so do the same here */
-    temp_reg = readl(CAAM_JRCFGR1_LS) | JRCFG_LS_IMSK;
-    writel(temp_reg, CAAM_JRCFGR1_LS);
+    temp_reg = readl(CAAM_JRCFGR_LS) | JRCFG_LS_IMSK;
+    writel(temp_reg, CAAM_JRCFGR_LS);
 
     /* if RNG already instantiated then skip it */
     if ((readl(CAAM_RDSTA) & RDSTA_IF0) != RDSTA_IF0) {
@@ -232,21 +220,26 @@ void init_caam_env(uint level) {
         panic("out of memory allocating job\n");
     }
 
-#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP) || defined(MACH_IMX8ULP)
     /* The JR0 is assigned to non-secure world by default in ATF, assign
      * it to secure world here. */
     uint32_t cfg_ms = 0;
     uint32_t cfg_ls = 0;
 
+#ifdef MACH_IMX8ULP
+    cfg_ms = 0x7 << 0;  /* JRxDID_MS_PRIM_DID */
+#else
     cfg_ms = 0x1 << 0;  /* JRxDID_MS_PRIM_DID */
+#endif
+
     cfg_ms |= (0x1 << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
     cfg_ms |= (0x1 << 16); /* JRxDID_MS_AMTD */
     cfg_ms |= (0x1 << 19); /* JRxDID_MS_PRIM_ICID */
     cfg_ms |= (0x1 << 31); /* JRxDID_MS_LDID */
     cfg_ms |= (0x1 << 17); /* JRxDID_MS_LAMTD */
 
-    writel(cfg_ms, CAAM_JR1MIDR);
-    writel(cfg_ls, CAAM_JR1LIDR);
+    writel(cfg_ms, CAAM_JRMIDR);
+    writel(cfg_ls, CAAM_JRLIDR);
 #endif
 
     /* Initialize job ring addresses */
