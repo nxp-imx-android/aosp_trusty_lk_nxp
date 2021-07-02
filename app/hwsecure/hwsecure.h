@@ -15,6 +15,10 @@ int init_rdc(void);
 int set_lcdif_secure(uint32_t cmd);
 
 /* Configure RDC to support Widevine secure pipe */
-int set_widevine_secure_mode(uint32_t cmd);
+int set_widevine_vpu_secure_mode(uint32_t cmd);
 
+/* Configure RDC to support G2D secure pipe */
+int set_widevine_g2d_secure_mode(uint32_t cmd);
+
+int get_widevine_g2d_secure_mode(int &mode);
 __END_CDECLS
