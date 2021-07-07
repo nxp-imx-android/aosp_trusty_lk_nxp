@@ -28,7 +28,9 @@ extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
 
 static void *csu_base = NULL;
 static uint8_t* rdc_base = NULL;
+#ifdef MACH_IMX8MP
 static g2d_secure_mode current_g2d_secure_mode = NON_SECURE;
+#endif
 #define RDC_MDAn(n) (rdc_base + 0x200 + (n * 4))
 #define DID0 (0x0)
 #define DID1 (0x1)
