@@ -306,4 +306,15 @@ int imx_rand(void) {
     return rand;
 }
 
+void platform_random_get_bytes(uint8_t *buf, size_t len) {
+    while (len) {
+        uint32_t val = (uint32_t)imx_rand();
+        size_t todo = len;
+        for (size_t i = 0; i < sizeof(val) && i < todo; i++, len--) {
+            *buf++ = val & 0xff;
+            val >>= 8;
+        }
+   }
+};
+
 LK_INIT_HOOK(imx_caam, init_caam_env, LK_INIT_LEVEL_KERNEL - 1);
