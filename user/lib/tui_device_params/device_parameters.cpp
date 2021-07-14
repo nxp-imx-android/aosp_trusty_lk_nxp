@@ -20,7 +20,7 @@ namespace devices {
 
 using namespace teeui;
 
-context<ConUIParameters> getDeviceContext(bool magnified) {
+std::vector<context<ConUIParameters>> getDeviceContext(bool magnified) {
     context<ConUIParameters> ctx(6.45211, 400.0 / 412.0);
     ctx.setParam<RightEdgeOfScreen>(1920_px);
     ctx.setParam<BottomOfScreen>(1080_px);
@@ -36,7 +36,7 @@ context<ConUIParameters> getDeviceContext(bool magnified) {
         ctx.setParam<DefaultFontSize>(34_dp);
         ctx.setParam<BodyFontSize>(36_dp);
     }
-    return ctx;
+    return {ctx};
 }
 
 }  // namespace devices

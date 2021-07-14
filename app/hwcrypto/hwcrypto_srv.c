@@ -32,10 +32,9 @@
 #include "hwkey_srv_priv.h"
 #include <nxp_hwcrypto_uuid_consts.h>
 #include <lib/storage/storage.h>
+#include <trusty_log.h>
 
-#define TLOG_LVL TLOG_LVL_DEFAULT
 #define TLOG_TAG "hwcrypto_srv"
-#include "tlog.h"
 
 #define HWCRYPTO_MAX_PAYLOAD_SIZE 2048
 static bool boot_state_locked = false;
