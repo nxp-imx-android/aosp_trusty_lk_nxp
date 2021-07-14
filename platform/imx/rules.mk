@@ -58,7 +58,8 @@ MODULE_SRCS := \
 	$(LOCAL_DIR)/debug.c \
 	$(LOCAL_DIR)/platform.c \
 	$(LOCAL_DIR)/smc_service_access_policy.c \
-	$(LOCAL_DIR)/drivers/imx_caam.c
+	$(LOCAL_DIR)/drivers/imx_caam.c \
+	$(LOCAL_DIR)/apploader_mmio_apps.c
 
 ifeq (true,$(call TOBOOL,$(WITH_TUI_SUPPORT)))
 MODULE_SRCS += \
