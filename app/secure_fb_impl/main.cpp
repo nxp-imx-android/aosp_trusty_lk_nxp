@@ -152,29 +152,36 @@ public:
     }
 };
 
-secure_fb_handle_t secure_fb_impl_init() {
+static secure_fb_handle_t secure_fb_impl_init() {
     auto sfb = new SecureFbImpl();
     sfb->Init(kDeviceWidth, kDeviceHeight);
     return sfb;
 }
 
-int secure_fb_impl_get_fbs(secure_fb_handle_t sfb_handle,
+static int secure_fb_impl_get_fbs(secure_fb_handle_t sfb_handle,
                            struct secure_fb_impl_buffers* buffers) {
     SecureFbImpl* sfb = reinterpret_cast<SecureFbImpl*>(sfb_handle);
     return sfb->GetFbs(buffers);
 }
 
-int secure_fb_impl_display_fb(secure_fb_handle_t sfb_handle,
+static int secure_fb_impl_display_fb(secure_fb_handle_t sfb_handle,
                               uint32_t buffer_id) {
     SecureFbImpl* sfb = reinterpret_cast<SecureFbImpl*>(sfb_handle);
     return sfb->Display(buffer_id);
 }
 
-int secure_fb_impl_release(secure_fb_handle_t sfb_handle) {
+static int secure_fb_impl_release(secure_fb_handle_t sfb_handle) {
     SecureFbImpl* sfb = reinterpret_cast<SecureFbImpl*>(sfb_handle);
     delete sfb;
     return SECURE_FB_ERROR_OK;
 }
+
+static const struct secure_fb_impl_ops ops = {
+    .init = secure_fb_impl_init,
+    .get_fbs = secure_fb_impl_get_fbs,
+    .display_fb = secure_fb_impl_display_fb,
+    .release = secure_fb_impl_release,
+};
 
 int main(void) {
     int rc;
@@ -186,7 +193,7 @@ int main(void) {
         return PTR_ERR(hset);
     }
 
-    rc = add_secure_fb_service(hset);
+    rc = add_secure_fb_service(hset, &ops, 1);
     if (rc != NO_ERROR) {
         TLOGE("failed (%d) to initialize secure_fb service\n", rc);
         return rc;
