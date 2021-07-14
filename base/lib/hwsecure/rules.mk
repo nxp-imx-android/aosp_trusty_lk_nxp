@@ -16,17 +16,19 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
-MODULE_INCLUDES	+= \
-        $(LOCAL_DIR)/include \
-        trusty/user/base/lib/tipc \
+MODULE_EXPORT_INCLUDES += \
+        $(LOCAL_DIR)/include
 
 MODULE_SRCS += \
         $(LOCAL_DIR)/hwsecure.c \
 
-MODULE_DEPS += \
+MODULE_LIBRARY_DEPS += \
         trusty/hardware/nxp/base/interface/hwsecure \
         trusty/user/base/lib/libc-trusty \
         trusty/user/base/lib/libstdc++-trusty \
         trusty/user/base/lib/tipc \
 
-include make/module.mk
+MODULE_LIBRARY_EXPORTED_DEPS := \
+        trusty/hardware/nxp/base/interface/hwsecure
+
+include make/library.mk

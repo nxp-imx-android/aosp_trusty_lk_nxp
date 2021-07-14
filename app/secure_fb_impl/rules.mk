@@ -26,11 +26,11 @@ MODULE_INCLUDES	+= \
 MODULE_SRCS += \
     $(LOCAL_DIR)/main.cpp \
 
-MODULE_DEPS += \
+MODULE_LIBRARY_DEPS += \
     trusty/hardware/nxp/base/lib/hwsecure \
     trusty/user/base/lib/libc-trusty \
     trusty/user/base/lib/libstdc++-trusty \
     trusty/user/base/lib/tipc \
     trusty/user/base/lib/secure_fb/srv \
 
-include make/module.mk
+include make/trusted_app.mk

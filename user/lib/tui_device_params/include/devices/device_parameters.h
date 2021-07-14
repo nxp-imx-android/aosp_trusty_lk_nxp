@@ -18,9 +18,10 @@
 
 #include <layouts/layout.h>
 #include <stdint.h>
+#include <vector>
 
 namespace devices {
 
-teeui::context<teeui::ConUIParameters> getDeviceContext(bool magnified);
+std::vector<teeui::context<teeui::ConUIParameters>> getDeviceContext(bool magnified);
 
 }  // namespace devices
