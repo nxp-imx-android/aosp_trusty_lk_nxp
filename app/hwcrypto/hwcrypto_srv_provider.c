@@ -23,10 +23,9 @@
 #include "common.h"
 #include "hwcrypto_srv_priv.h"
 #include <interface/hwcrypto/hwcrypto.h>
+#include <trusty_log.h>
 
-#define TLOG_LVL TLOG_LVL_DEFAULT
 #define TLOG_TAG "hwcrypto_caam"
-#include "tlog.h"
 
 static uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,

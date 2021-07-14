@@ -34,10 +34,10 @@ MODULE_SRCS += \
         $(LOCAL_DIR)/hwsecure_srv.cpp \
         $(LOCAL_DIR)/hwsecure.cpp \
 
-MODULE_DEPS += \
+MODULE_LIBRARY_DEPS += \
         trusty/hardware/nxp/base/interface/hwsecure \
         trusty/user/base/lib/libc-trusty \
         trusty/user/base/lib/libstdc++-trusty \
         trusty/user/base/lib/tipc \
 
-include make/module.mk
+include make/trusted_app.mk

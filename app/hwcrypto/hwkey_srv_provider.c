@@ -299,7 +299,7 @@ fail:
         TLOGE("hwkey: keybox read failed!\n");
         return HWKEY_ERR_GENERIC;
     } else {
-        TLOGI("hwkey: keybox read successfully!\n");
+        TLOGE("hwkey: keybox read successfully!\n");
         *klen = rc;
         return HWKEY_NO_ERROR;
     }
