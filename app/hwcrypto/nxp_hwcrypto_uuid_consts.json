@@ -25,6 +25,11 @@
             "name": "HWOEMCRYPTO_SERVER_APP_UUID",
             "value": "deb09cd6-7d65-4374-8e3a-63955a27279e",
             "type": "uuid"
+        },
+        {
+            "name": "HWAES_APP_UUID",
+            "value": "6f4a2303-f4f8-431d-82d1-3ec52aebbb89",
+            "type": "uuid"
         }
     ]
 }
