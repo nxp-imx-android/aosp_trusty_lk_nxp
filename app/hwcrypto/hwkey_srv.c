@@ -16,9 +16,11 @@
 
 #include <assert.h>
 #include <lk/compiler.h>
+#include <lk/list.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <trusty_ipc.h>
 #include <uapi/err.h>
@@ -28,6 +30,8 @@
 
 #include "common.h"
 #include "hwkey_srv_priv.h"
+#include "hwrng_srv_priv.h"
+#include <openssl/mem.h>
 
 #define TLOG_TAG "hwkey_srv"
 #include <trusty_log.h>
@@ -39,6 +43,30 @@ struct hwkey_chan_ctx {
     handle_t chan;
     uuid_t uuid;
 };
+
+/**
+ * An opaque key access token.
+ *
+ * Clients can retrieve an opaque access token as a handle to a key they are
+ * allowed to use but not read directly. This handle can then be passed to other
+ * crypto services which can use the token to retrieve the actual key from
+ * hwkey.
+ */
+typedef char access_token_t[HWKEY_OPAQUE_HANDLE_SIZE];
+
+struct opaque_handle_node {
+    const struct hwkey_keyslot* key_slot;
+    struct hwkey_chan_ctx* owner;
+    access_token_t token;
+    struct list_node node;
+};
+
+/*
+ * Global list of currently valid opaque handles. Each client may only have a
+ * single entry in this list for a given key slot, and this entry will be
+ * cleaned up when the connection it was created for is closed.
+ */
+static struct list_node opaque_handles = LIST_INITIAL_VALUE(opaque_handles);
 
 static void hwkey_port_handler(const uevent_t* ev, void* priv);
 static void hwkey_chan_handler(const uevent_t* ev, void* priv);
@@ -59,6 +87,21 @@ static uint8_t req_data[HWKEY_MAX_PAYLOAD_SIZE + 1]
 
 static unsigned int key_slot_cnt;
 static const struct hwkey_keyslot* key_slots;
+
+static bool is_opaque_handle(const struct hwkey_keyslot* key_slot) {
+    assert(key_slot);
+    return key_slot->handler == get_key_handle;
+}
+
+static void delete_opaque_handle(struct opaque_handle_node* node) {
+    assert(node);
+
+    /* Zero out the access token just in case the memory is reused */
+    memset(node->token, 0, HWKEY_OPAQUE_HANDLE_SIZE);
+
+    list_delete(&node->node);
+    free(node);
+}
 
 #if WITH_HWCRYPTO_UNITTEST
 /*
@@ -114,6 +157,56 @@ static int hwkey_send_rsp(struct hwkey_chan_ctx* ctx,
                                   rsp_data, rsp_data_len);
 }
 
+static bool is_allowed_to_read_opaque_key(const uuid_t* uuid,
+                                          const struct hwkey_keyslot* slot) {
+    assert(slot);
+    const struct hwkey_opaque_handle_data* handle = slot->priv;
+    assert(handle);
+
+    for (size_t i = 0; i < handle->allowed_uuids_len; ++i) {
+        if (memcmp(handle->allowed_uuids[i], uuid, sizeof(uuid_t)) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static struct opaque_handle_node* find_opaque_handle_for_slot(
+        const struct hwkey_keyslot* slot) {
+    struct opaque_handle_node* entry;
+    list_for_every_entry(&opaque_handles, entry, struct opaque_handle_node,
+                         node) {
+        if (entry->key_slot == slot) {
+            return entry;
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * If a handle doesn't exist yet for the given slot, create and insert a new one
+ * in the global list.
+ */
+static uint32_t insert_handle_node(struct hwkey_chan_ctx* ctx,
+                                   const struct hwkey_keyslot* slot) {
+    struct opaque_handle_node* entry = find_opaque_handle_for_slot(slot);
+
+    if (!entry) {
+        entry = calloc(1, sizeof(struct opaque_handle_node));
+        if (!entry) {
+            TLOGE("Could not allocate new opaque_handle_node\n");
+            return HWKEY_ERR_GENERIC;
+        }
+
+        entry->owner = ctx;
+        entry->key_slot = slot;
+        list_add_tail(&opaque_handles, &entry->node);
+    }
+
+    return HWKEY_NO_ERROR;
+}
+
 static uint32_t _handle_slots(struct hwkey_chan_ctx* ctx,
                               const char* slot_id,
                               const struct hwkey_keyslot* slots,
@@ -132,11 +225,17 @@ static uint32_t _handle_slots(struct hwkey_chan_ctx* ctx,
         /* Check if the caller is allowed to get that key */
         if (memcmp(&ctx->uuid, slots->uuid, sizeof(uuid_t)) == 0) {
             if (slots->handler) {
+                if (is_opaque_handle(slots)) {
+                    uint32_t rc = insert_handle_node(ctx, slots);
+                    if (rc != HWKEY_NO_ERROR)
+                        return rc;
+                }
                 return slots->handler(slots, kbuf, kbuf_len, klen);
             }
         }
     }
-    return HWKEY_ERR_NOT_FOUND;
+
+    return get_opaque_key(&ctx->uuid, slot_id, kbuf, kbuf_len, klen);
 }
 
 /*
@@ -338,6 +437,108 @@ void hwkey_install_keys(const struct hwkey_keyslot* keys, unsigned int kcnt) {
 
     key_slots = keys;
     key_slot_cnt = kcnt;
+}
+
+static bool is_empty_token(const char* access_token) {
+    for (int i = 0; i < HWKEY_OPAQUE_HANDLE_SIZE; i++) {
+        if (access_token[i] != 0) {
+            assert(strnlen(access_token, HWKEY_OPAQUE_HANDLE_SIZE) ==
+                   HWKEY_OPAQUE_HANDLE_SIZE - 1);
+            return false;
+        }
+    }
+    return true;
+}
+
+uint32_t get_key_handle(const struct hwkey_keyslot* slot,
+                        uint8_t* kbuf,
+                        size_t kbuf_len,
+                        size_t* klen) {
+    assert(kbuf);
+    assert(klen);
+
+    const struct hwkey_opaque_handle_data* handle = slot->priv;
+    assert(handle);
+    assert(kbuf_len >= HWKEY_OPAQUE_HANDLE_SIZE);
+
+    struct opaque_handle_node* entry = find_opaque_handle_for_slot(slot);
+    /* _handle_slots should have already created an entry for this slot */
+    assert(entry);
+
+    if (!is_empty_token(entry->token)) {
+        /*
+         * We do not allow fetching a token again for the same slot again after
+         * the token is first created and returned
+         */
+        return HWKEY_ERR_ALREADY_EXISTS;
+    }
+
+    /*
+     * We want to generate a null-terminated opaque handle with no interior null
+     * bytes, so we generate extra randomness and only use the non-zero bytes.
+     */
+    uint8_t random_buf[HWKEY_OPAQUE_HANDLE_SIZE + 2];
+    while (1) {
+        int rc = hwrng_dev_get_rng_data(random_buf, sizeof(random_buf));
+        if (rc != NO_ERROR) {
+            /* Don't leave an empty entry if we couldn't generate a token */
+            delete_opaque_handle(entry);
+            return rc;
+        }
+
+        size_t token_offset = 0;
+        for (size_t i = 0; i < sizeof(random_buf) &&
+                           token_offset < HWKEY_OPAQUE_HANDLE_SIZE - 1;
+             ++i) {
+            if (random_buf[i] != 0) {
+                entry->token[token_offset] = random_buf[i];
+                token_offset++;
+            }
+        }
+        if (token_offset == HWKEY_OPAQUE_HANDLE_SIZE - 1) {
+            break;
+        }
+    }
+
+    /* ensure that token is properly null-terminated */
+    assert(entry->token[HWKEY_OPAQUE_HANDLE_SIZE - 1] == 0);
+
+    memcpy(kbuf, entry->token, HWKEY_OPAQUE_HANDLE_SIZE);
+    *klen = HWKEY_OPAQUE_HANDLE_SIZE;
+
+    return HWKEY_NO_ERROR;
+}
+
+uint32_t get_opaque_key(const uuid_t* uuid,
+                        const char* access_token,
+                        uint8_t* kbuf,
+                        size_t kbuf_len,
+                        size_t* klen) {
+    struct opaque_handle_node* entry;
+    list_for_every_entry(&opaque_handles, entry, struct opaque_handle_node,
+                         node) {
+        /* get_key_handle should never leave an empty token in the list */
+        assert(!is_empty_token(entry->token));
+
+        if (!is_allowed_to_read_opaque_key(uuid, entry->key_slot))
+            continue;
+
+        /*
+         * We are using a constant-time memcmp here to avoid side-channel
+         * leakage of the access token. Even if we trust the service that is
+         * allowed to retrieve this key, one of its clients may be trying to
+         * brute force the token, so this comparison must be constant-time.
+         */
+        if (CRYPTO_memcmp(entry->token, access_token,
+                          HWKEY_OPAQUE_HANDLE_SIZE) == 0) {
+            const struct hwkey_opaque_handle_data* handle =
+                    entry->key_slot->priv;
+            assert(handle);
+            return handle->retriever(handle, kbuf, kbuf_len, klen);
+        }
+    }
+
+    return HWKEY_ERR_NOT_FOUND;
 }
 
 /*

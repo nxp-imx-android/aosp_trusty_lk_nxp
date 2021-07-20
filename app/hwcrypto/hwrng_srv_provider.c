@@ -28,13 +28,16 @@
 #define TLOG_TAG "hwrng_caam"
 #include <trusty_log.h>
 
-void hwrng_dev_get_rng_data(uint8_t* buf, size_t buf_len) {
+int hwrng_dev_get_rng_data(uint8_t* buf, size_t buf_len) {
 #ifndef SOFTWARE_CRYPTO
     uint32_t res = caam_hwrng(buf, buf_len);
-    assert(res == CAAM_SUCCESS);
+    if (res != CAAM_SUCCESS)
+        return ERR_GENERIC;
 #else
     memset(buf, 1, buf_len);
 #endif
+
+    return NO_ERROR;
 }
 
 void hwrng_init_srv_provider(void) {
