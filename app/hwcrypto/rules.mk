@@ -44,6 +44,7 @@ MODULE_LIBRARY_DEPS := \
 	trusty/user/base/interface/hwrng \
 	trusty/user/base/interface/hwkey \
 	trusty/user/base/interface/hwcrypto \
+	trusty/user/base/interface/hwaes \
 	trusty/user/base/lib/storage \
 	external/boringssl \
 
