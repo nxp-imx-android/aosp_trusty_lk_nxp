@@ -541,6 +541,33 @@ uint32_t get_opaque_key(const uuid_t* uuid,
     return HWKEY_ERR_NOT_FOUND;
 }
 
+uint32_t hwaes_get_opaque_key(const char* access_token,
+                        uint8_t* kbuf,
+                        size_t kbuf_len,
+                        size_t* klen) {
+    struct opaque_handle_node* entry;
+    list_for_every_entry(&opaque_handles, entry, struct opaque_handle_node,
+                         node) {
+        /* get_key_handle should never leave an empty token in the list */
+        assert(!is_empty_token(entry->token));
+
+        /*
+         * We are using a constant-time memcmp here to avoid side-channel
+         * leakage of the access token. Even if we trust the service that is
+         * allowed to retrieve this key, one of its clients may be trying to
+         * brute force the token, so this comparison must be constant-time.
+         */
+        if (CRYPTO_memcmp(entry->token, access_token,
+                          HWKEY_OPAQUE_HANDLE_SIZE) == 0) {
+            const struct hwkey_opaque_handle_data* handle =
+                    entry->key_slot->priv;
+            assert(handle);
+            return handle->retriever(handle, kbuf, kbuf_len, klen);
+        }
+    }
+
+    return HWKEY_ERR_NOT_FOUND;
+}
 /*
  *  Initialize HWKEY service
  */
