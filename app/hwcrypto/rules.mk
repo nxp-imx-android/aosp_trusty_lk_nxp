@@ -31,15 +31,21 @@ MODULE_SRCS := \
 	$(LOCAL_DIR)/hwrng_srv.c \
 	$(LOCAL_DIR)/hwkey_srv.c \
 	$(LOCAL_DIR)/hwcrypto_srv.c \
+	$(LOCAL_DIR)/hwaes_srv.c \
 	$(LOCAL_DIR)/hwkey_srv_provider.c \
 	$(LOCAL_DIR)/hwrng_srv_provider.c \
 	$(LOCAL_DIR)/hwcrypto_srv_provider.c \
+	$(LOCAL_DIR)/hwaes_srv_provider.c \
 	$(LOCAL_DIR)/caam.c \
 
 MODULE_INCLUDES := \
-	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include
+	$(LOCAL_DIR) \
+	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include \
+	trusty/user/base/lib/hwaes/srv/include
 
 MODULE_LIBRARY_DEPS := \
+	trusty/user/base/lib/hwaes/srv \
+	trusty/user/base/lib/hwkey \
 	trusty/user/base/lib/libc-trusty \
 	trusty/user/base/interface/hwrng \
 	trusty/user/base/interface/hwkey \
