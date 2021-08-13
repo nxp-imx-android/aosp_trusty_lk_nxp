@@ -87,6 +87,11 @@ uint32_t get_opaque_key(const uuid_t* uuid,
                         size_t kbuf_len,
                         size_t* klen);
 
+uint32_t hwaes_get_opaque_key(const char* access_token,
+                        uint8_t* kbuf,
+                        size_t kbuf_len,
+                        size_t* klen);
+
 void hwkey_init_srv_provider(void);
 
 void hwkey_install_keys(const struct hwkey_keyslot* keys, unsigned int kcnt);

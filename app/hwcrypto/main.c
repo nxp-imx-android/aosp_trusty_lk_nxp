@@ -28,6 +28,7 @@
 #include "hwkey_srv_priv.h"
 #include "hwrng_srv_priv.h"
 #include "hwcrypto_srv_priv.h"
+#include "hwaes_srv_priv.h"
 
 #define TLOG_TAG "hwcrypto"
 #include <trusty_log.h>
@@ -47,32 +48,6 @@ void _hexdump8(const void* ptr, size_t len) {
         }
         fprintf(stderr, "\n");
         address += 16;
-    }
-}
-
-/*
- * Handle common unexpected port events
- */
-void tipc_handle_port_errors(const uevent_t* ev) {
-    if ((ev->event & IPC_HANDLE_POLL_ERROR) ||
-        (ev->event & IPC_HANDLE_POLL_HUP) ||
-        (ev->event & IPC_HANDLE_POLL_MSG) ||
-        (ev->event & IPC_HANDLE_POLL_SEND_UNBLOCKED)) {
-        /* should never happen with port handles */
-        TLOGE("error event (0x%x) for port (%d)\n", ev->event, ev->handle);
-        abort();
-    }
-}
-
-/*
- * Handle common unexpected channel events
- */
-void tipc_handle_chan_errors(const uevent_t* ev) {
-    if ((ev->event & IPC_HANDLE_POLL_ERROR) ||
-        (ev->event & IPC_HANDLE_POLL_READY)) {
-        /* close it as it is in an error state */
-        TLOGE("error event (0x%x) for chan (%d)\n", ev->event, ev->handle);
-        abort();
     }
 }
 
@@ -235,6 +210,7 @@ int main(void) {
     hwrng_init_srv_provider();
     hwcrypto_init_srv_provider();
     hwkey_init_srv_provider();
+    hwaes_init_srv_provider();
 
     TLOGD("enter main event loop\n");
 
