@@ -29,5 +29,4 @@ enum rdc_mda_idx {
     RDC_MDA_VC8000E = 34,
 
 };
-
 #endif
