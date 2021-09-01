@@ -81,6 +81,12 @@ GLOBAL_DEFINES += \
 	USE_IMX_MONOTONIC_TIME=1
 endif
 
+ifeq (true, $(call TOBOOL,$(WITH_VPU_DRIVER)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/imx_vpu.c \
+	$(LOCAL_DIR)/drivers/imx_vpu_enc.c
+endif
+
 #include SOC specific rules if they exists
 -include $(LOCAL_DIR)/soc/$(PLATFORM_SOC)/rules.mk
 
