@@ -37,8 +37,15 @@ MMIO_APP(oemcrypto_range,
                 0x4374,
                 {0x8e, 0x3a, 0x63, 0x95, 0x5a, 0x27, 0x27, 0x9e}}));
 
+MMIO_APP(confirmation_ui_range,
+              ({0x7dee2364,
+                0xc036,
+                0x425b,
+                {0xb0, 0x86, 0xdf, 0x0f, 0x6c, 0x23, 0x3c, 0x1b}}));
+
 static void add_app_ranges(uint level) {
     trusty_app_allow_mmio_range(&oemcrypto_range);
+    trusty_app_allow_mmio_range(&confirmation_ui_range);
 }
 
 LK_INIT_HOOK(allowed_app_ranges,
