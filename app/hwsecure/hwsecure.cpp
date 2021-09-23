@@ -89,24 +89,6 @@ static int set_lcdif_secure_csl(uint32_t csl_val) {
     return 0;
 }
 
-int set_widevine_vpu_secure_mode(uint32_t cmd) {
-
-#ifdef MACH_IMX8MP
-    if (cmd == HWSECURE_WV_VPU_SECURE) {
-        writel(DID2, RDC_MDAn(RDC_MDA_VPUG1));
-        writel(DID2, RDC_MDAn(RDC_MDA_VPUG2));
-    } else if (cmd == HWSECURE_WV_VPU_NON_SECURE) {
-        writel(DID0, RDC_MDAn(RDC_MDA_VPUG1));
-        writel(DID0, RDC_MDAn(RDC_MDA_VPUG2));
-    } else {
-        return ERR_INVALID_ARGS;
-    }
-    return 0;
-#else
-    return ERR_GENERIC;
-#endif
-}
-
 int set_widevine_g2d_secure_mode(uint32_t cmd) {
 
 #ifdef MACH_IMX8MP
