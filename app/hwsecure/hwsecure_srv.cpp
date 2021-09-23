@@ -145,14 +145,6 @@ static int hwsecure_on_message(const struct tipc_port* port,
                 return ERR_GENERIC;
             }
             break;
-        case HWSECURE_WV_VPU_SECURE:
-        case HWSECURE_WV_VPU_NON_SECURE:
-                if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
-                    return set_widevine_vpu_secure_mode(req.cmd);
-                } else {
-                    TLOGE("UUID doesn't match!\n");
-                    return ERR_GENERIC;
-                }
         case HWSECURE_WV_G2D_SECURE:
         case HWSECURE_WV_G2D_NON_SECURE:
                 if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
