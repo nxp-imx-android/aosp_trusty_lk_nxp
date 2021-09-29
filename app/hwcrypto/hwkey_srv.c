@@ -141,6 +141,14 @@ static const struct hwkey_keyslot test_key_slots[] = {
  * Close specified hwkey context
  */
 static void hwkey_ctx_close(struct hwkey_chan_ctx* ctx) {
+    struct opaque_handle_node* entry;
+    struct opaque_handle_node* temp;
+    list_for_every_entry_safe(&opaque_handles, entry, temp,
+                              struct opaque_handle_node, node) {
+        if (entry->owner == ctx) {
+            delete_opaque_handle(entry);
+        }
+    }
     close(ctx->chan);
     free(ctx);
 }
