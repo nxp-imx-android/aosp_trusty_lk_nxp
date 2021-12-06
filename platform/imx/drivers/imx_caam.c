@@ -271,6 +271,9 @@ void imx_trusty_rand_add_entropy(const void *buf, size_t len) {
 static struct mutex lock = MUTEX_INITIAL_VALUE(lock);
 
 int imx_rand(void) {
+#ifdef MACH_IMX8ULP
+	return rand();
+#else
     int rand, *rand_buf;
     paddr_t ptr, entropy_pa;
 
@@ -304,6 +307,7 @@ int imx_rand(void) {
     rand = *rand_buf;
     free(rand_buf);
     return rand;
+#endif
 }
 
 LK_INIT_HOOK(imx_caam, init_caam_env, LK_INIT_LEVEL_KERNEL - 1);
