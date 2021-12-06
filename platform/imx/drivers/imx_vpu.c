@@ -54,7 +54,6 @@ static uint32_t inout_buffer_g2_paddr[G2_SECURE_REGS_SIZE][2] = {{169 * 4, 0x0},
                                                {186 * 4, 0x0}, /* HWIF_DEC_DSY_BASE_LSB ,downscale not used*/
                                                {65 * 4 , 0x0}, /* HWIF_DEC_OUT_YBASE_LSB, pp refrence outbuffer for nv12*/
                                                {190 * 4, 0x0}  /* HWIF_DEC_OUT_TYBASE_LSB, pp refrence outbuffer for DTRC not used by android */};
-#define DTRC_SWITCH (3 * 4)
 
 int set_widevine_vpu_secure_mode(bool enable, uint32_t vpu_type) {
     if (enable) {
@@ -68,8 +67,11 @@ int set_widevine_vpu_secure_mode(bool enable, uint32_t vpu_type) {
 bool is_unmapped_heap(uint64_t paddr) {
     if (paddr >= UNMAPPED_HEAP_ADDR && paddr < (UNMAPPED_HEAP_ADDR + UNMAPPED_HEAP_SIZE)) {
         return true;
+    } else if (paddr == 0) {
+        return true;
+    } else {
+        return false;
     }
-    return false;
 }
 uint8_t in_out_addr_align(uint32_t (*paddr)[2], size_t rows) {
     uint8_t ret = 0b00000000;
@@ -176,20 +178,24 @@ static long vpu_secure_ctrl_regs(uint32_t reg_index, uint32_t val, u32 option) {
         buffer_paddr_array_size = 2;
         align_flags = 0x3;
         regs_viraddr_base = SOCLE_LOGIC_0_BASE;
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         vpu_rdc_addr = RDC_MDA_VPUG1;
+#elif defined(MACH_IMX8MQ)
+        vpu_rdc_addr = RDC_MDA_VPU_DEC;
+#endif
     } else if ((option & 0xf0) >> 4 == 1) {
         buffer_paddr_array = inout_buffer_g2_paddr;
         buffer_paddr_array_size = G2_SECURE_REGS_SIZE;
-        align_flags = 0b1011;
+        align_flags = 0b11111;
         regs_viraddr_base = SOCLE_LOGIC_1_BASE;
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         vpu_rdc_addr = RDC_MDA_VPUG2;
+#elif defined(MACH_IMX8MQ)
+        vpu_rdc_addr = RDC_MDA_VPU_DEC;
+#endif
     }
     if (val & 0x1) {
         uint8_t is_align = in_out_addr_align(buffer_paddr_array, buffer_paddr_array_size);
-        /* check whether it is DTRC mode now */
-        if ((option & 0xf0) >> 4 == 1 && vpu_read_regs(DTRC_SWITCH, option) == 0) {
-            align_flags = 0b10011;
-        }
         if (is_align == 0x0 || is_align == align_flags) {
             for (size_t i = 0; i < buffer_paddr_array_size; i++) {
                 *REG32(regs_viraddr_base + buffer_paddr_array[i][0]) = buffer_paddr_array[i][1];
