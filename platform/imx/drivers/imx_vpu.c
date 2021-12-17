@@ -64,10 +64,12 @@ int set_widevine_vpu_secure_mode(bool enable, uint32_t vpu_type) {
     return 0;
 }
 
-bool is_unmapped_heap(uint64_t paddr) {
+bool is_unmapped_heap(uint64_t paddr, uint8_t* none_paddr_exist, uint8_t* secure_exist) {
     if (paddr >= UNMAPPED_HEAP_ADDR && paddr < (UNMAPPED_HEAP_ADDR + UNMAPPED_HEAP_SIZE)) {
+        *secure_exist = 1;
         return true;
     } else if (paddr == 0) {
+        *none_paddr_exist = 1;
         return true;
     } else {
         return false;
@@ -75,9 +77,19 @@ bool is_unmapped_heap(uint64_t paddr) {
 }
 uint8_t in_out_addr_align(uint32_t (*paddr)[2], size_t rows) {
     uint8_t ret = 0b00000000;
+    uint8_t secure_exist = 0;
+    uint8_t none_paddr_exist = 0;
     for (size_t i = 0; i < rows; i++) {
-        if (is_unmapped_heap(paddr[i][1]))
+        if (is_unmapped_heap(paddr[i][1], &none_paddr_exist, &secure_exist)) {
             ret = ret | (1 << i);
+        }
+    }
+    if (!secure_exist && none_paddr_exist) {
+        for (size_t j = 0; j < rows; j++) {
+            if(paddr[j][1] == 0) {
+                ret = ret & ~(1 << j);
+            }
+        }
     }
     return ret;
 }
