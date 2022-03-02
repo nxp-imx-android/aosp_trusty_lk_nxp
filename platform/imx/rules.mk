@@ -61,7 +61,7 @@ MODULE_SRCS := \
 	$(LOCAL_DIR)/drivers/imx_caam.c \
 	$(LOCAL_DIR)/apploader_mmio_apps.c
 
-ifeq (true,$(call TOBOOL,$(WITH_TUI_SUPPORT)))
+ifeq (true,$(call TOBOOL,$(WITH_LCDIF_SUPPORT)))
 MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_csu.c \
 	$(LOCAL_DIR)/drivers/imx_lcdif.c

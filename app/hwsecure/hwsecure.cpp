@@ -62,6 +62,7 @@ int init_rdc(void) {
     return 0;
 }
 
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
 static int set_lcdif_secure_sa(uint32_t enable) {
     int ret;
     struct csu_cfg_sa_msg sa_msg;
@@ -88,6 +89,24 @@ static int set_lcdif_secure_csl(uint32_t csl_val) {
     }
     return 0;
 }
+#elif defined(MACH_IMX8MQ)
+static int set_dcss_secure_csl(uint32_t csl_val) {
+    int ret;
+    struct csu_cfg_csl_msg csl_msg;
+    int DCSS_CSL_ID[4] = {CSU_CSL_MST0_ID, CSU_CSL_MST1_ID, CSU_CSL_MST2_ID, CSU_CSL_MST3_ID};
+    for (size_t i = 0; i < 4; i++ ) {
+        csl_msg.id = DCSS_CSL_ID[i];
+        csl_msg.val = csl_val;
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_CSU, CSU_IOCMD_CFG_CSL, &csl_msg);
+        if (ret != CSU_OK) {
+            TLOGE("csu ioctl failed. cmd=%d\n", CSU_IOCMD_CFG_CSL);
+            return ret;
+        }
+    }
+    return 0;
+}
+
+#endif
 
 int set_widevine_g2d_secure_mode(uint32_t cmd) {
 
@@ -117,7 +136,7 @@ int get_widevine_g2d_secure_mode(int &mode) {
 #endif
 }
 
-
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
 int set_lcdif_secure(uint32_t cmd) {
     if (cmd == HWSECURE_LCDIF_SECURE_ACCESS) {
        if (set_lcdif_secure_csl(CSL_SECURE_ONLY)) {
@@ -139,4 +158,22 @@ int set_lcdif_secure(uint32_t cmd) {
 
     return 0;
 }
+#elif defined(MACH_IMX8MQ)
+int set_dcss_secure(uint32_t cmd) {
+    if (cmd == HWSECURE_DCSS_SECURE_ACCESS) {
+       if (set_dcss_secure_csl(CSL_SECURE_ONLY)) {
+           return ERR_GENERIC;
+       }
+    } else if (cmd == HWSECURE_DCSS_NON_SECURE_ACCESS) {
+       if (set_dcss_secure_csl(CSL_DEFAULT)) {
+           return ERR_GENERIC;
+       }
+    } else {
+        return ERR_INVALID_ARGS;
+    }
+
+    return 0;
+
+}
+#endif
 
