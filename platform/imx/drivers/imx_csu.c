@@ -101,7 +101,9 @@ static int32_t sys_csu_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
                 return CSU_ERR;
         case CSU_IOCMD_SECURE_DISP:
             if (check_uuid_equal(&app->props.uuid, &secure_fb_impl_ta_uuid))
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
                 return imx_secure_disp(cmd, user_ptr);
+#endif
             else
                 return CSU_ERR;
     }

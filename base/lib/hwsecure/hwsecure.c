@@ -97,4 +97,29 @@ int get_widevine_g2d_secure_mode(int* secure_mode) {
     return rc;
 }
 
+int set_dcss_secure_access(int enable) {
+    handle_t chan;
+    int rc;
+
+    rc = tipc_connect(&chan, HWSECURE_PORT_NAME);
+    if (rc != NO_ERROR) {
+        TLOGE("failed to connect to TA %s\n", HWSECURE_PORT_NAME);
+        return rc;
+    }
+
+    struct hwsecure_req req;
+    if (enable)
+        req.cmd = HWSECURE_DCSS_SECURE_ACCESS;
+    else
+        req.cmd = HWSECURE_DCSS_NON_SECURE_ACCESS;
+
+    rc = tipc_send1(chan, &req, sizeof(req));
+
+    if (rc != (int)(sizeof(req))) {
+        TLOGE("failed to send message and rc=%d\n", rc);
+    }
+
+    close(chan);
+    return rc;
+}
 

@@ -21,4 +21,6 @@ int set_widevine_vpu_secure_mode(uint32_t cmd);
 int set_widevine_g2d_secure_mode(uint32_t cmd);
 
 int get_widevine_g2d_secure_mode(int &mode);
+
+int set_dcss_secure(uint32_t cmd);
 __END_CDECLS

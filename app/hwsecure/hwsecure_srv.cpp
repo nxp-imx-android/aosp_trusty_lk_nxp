@@ -8,6 +8,7 @@
 #include <lib/tipc/tipc_srv.h>
 #include "hwsecure_srv.h"
 #include "hwsecure.h"
+#include "imx-regs.h"
 
 #define TLOG_TAG "hwsecure_srv"
 
@@ -45,6 +46,15 @@ const static struct uuid hwoemcrypto_ta_uuid = {
     {0x8e, 0x3a, 0x63, 0x95, 0x5a, 0x27, 0x27, 0x9e},
 };
 
+// 7dee2364-c036-425b-b086-df0f6c233c1b
+const static struct uuid confirmationui_ta_uuid = {
+    0x7dee2364,
+    0xc036,
+    0x425b,
+    {0xb0, 0x86, 0xdf, 0x0f, 0x6c, 0x23, 0x3c, 0x1b},
+};
+
+
 static bool check_uuid_equal(const struct uuid* a, const struct uuid* b) {
     return memcmp(a, b, sizeof(struct uuid)) == 0;
 }
@@ -52,11 +62,12 @@ static bool check_uuid_equal(const struct uuid* a, const struct uuid* b) {
 static const struct uuid *allow_uuids[] = {
     &secure_fb_impl_ta_uuid,
     &hwoemcrypto_ta_uuid,
+    &confirmationui_ta_uuid,
 };
 
 static struct tipc_port_acl acl = {
     .flags = IPC_PORT_ALLOW_TA_CONNECT,
-    .uuid_num = 2,
+    .uuid_num = 3,
     .uuids = allow_uuids,
 };
 
@@ -136,6 +147,17 @@ static int hwsecure_on_message(const struct tipc_port* port,
     }
 
     switch(req.cmd) {
+#if defined(MACH_IMX8MQ)
+        case HWSECURE_DCSS_SECURE_ACCESS:
+        case HWSECURE_DCSS_NON_SECURE_ACCESS:
+             if (check_uuid_equal(&(ptr->peer), &confirmationui_ta_uuid)) {
+                  return set_dcss_secure(req.cmd);
+             } else {
+                  TLOGE("UUID doesn't match!\n");
+                  return ERR_GENERIC;
+             }
+             break;
+#elif defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
         case HWSECURE_LCDIF_SECURE_ACCESS:
         case HWSECURE_LCDIF_NON_SECURE_ACCESS:
             if (check_uuid_equal(&(ptr->peer), &secure_fb_impl_ta_uuid))
@@ -145,6 +167,7 @@ static int hwsecure_on_message(const struct tipc_port* port,
                 return ERR_GENERIC;
             }
             break;
+#endif
         case HWSECURE_WV_G2D_SECURE:
         case HWSECURE_WV_G2D_NON_SECURE:
                 if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
