@@ -67,7 +67,9 @@ public:
         msg.enable = 0;
         msg.paddr = 0;
         _trusty_ioctl(SYSCALL_PLATFORM_FD_CSU, CSU_IOCMD_SECURE_DISP, &msg);
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         set_lcdif_secure_access(false);
+#endif
     }
 
     int Init(uint32_t width, uint32_t height) {
@@ -140,8 +142,9 @@ public:
         fb_size = fb_db_[0].fb_info.size;
         prepare_dma(fb_base, fb_size, DMA_FLAG_TO_DEVICE, &pmem);
         paddr = (uint32_t)pmem.paddr;
-
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         set_lcdif_secure_access(true);
+#endif
         struct csu_cfg_secure_disp_msg msg;
         msg.enable = 1;
         msg.paddr = paddr;
