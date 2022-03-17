@@ -106,11 +106,11 @@ static void hwkey_ctx_close(struct hwkey_chan_ctx* ctx) {
  * Send response message
  */
 static int hwkey_send_rsp(struct hwkey_chan_ctx* ctx,
-                          struct hwkey_msg* rsp_hdr,
+                          struct hwkey_msg* rsp_msg,
                           uint8_t* rsp_data,
                           size_t rsp_data_len) {
-    rsp_hdr->cmd |= HWKEY_RESP_BIT;
-    return tipc_send_two_segments(ctx->chan, rsp_hdr, sizeof(*rsp_hdr),
+    rsp_msg->header.cmd |= HWKEY_RESP_BIT;
+    return tipc_send_two_segments(ctx->chan, rsp_msg, sizeof(*rsp_msg),
                                   rsp_data, rsp_data_len);
 }
 
@@ -143,24 +143,24 @@ static uint32_t _handle_slots(struct hwkey_chan_ctx* ctx,
  * Handle get key slot command
  */
 static int hwkey_handle_get_keyslot_cmd(struct hwkey_chan_ctx* ctx,
-                                        struct hwkey_msg* hdr,
+                                        struct hwkey_msg* msg,
                                         const char* slot_id) {
     int rc;
     size_t klen = 0;
 
-    hdr->status = _handle_slots(ctx, slot_id, key_slots, key_slot_cnt, key_data,
-                                sizeof(key_data), &klen);
+    msg->header.status = _handle_slots(ctx, slot_id, key_slots, key_slot_cnt,
+                                       key_data, sizeof(key_data), &klen);
 
 #if WITH_HWCRYPTO_UNITTEST
-    if (hdr->status == HWKEY_ERR_NOT_FOUND) {
+    if (msg->header.status == HWKEY_ERR_NOT_FOUND) {
         /* also search test keys */
-        hdr->status = _handle_slots(ctx, slot_id, test_key_slots,
-                                    countof(test_key_slots), key_data,
-                                    sizeof(key_data), &klen);
+        msg->header.status = _handle_slots(ctx, slot_id, test_key_slots,
+                                           countof(test_key_slots), key_data,
+                                           sizeof(key_data), &klen);
     }
 #endif
 
-    rc = hwkey_send_rsp(ctx, hdr, key_data, klen);
+    rc = hwkey_send_rsp(ctx, msg, key_data, klen);
     if (klen) {
         /* sanitize key buffer */
         memset(key_data, 0, klen);
@@ -172,29 +172,29 @@ static int hwkey_handle_get_keyslot_cmd(struct hwkey_chan_ctx* ctx,
  * Handle Derive key cmd
  */
 static int hwkey_handle_derive_key_cmd(struct hwkey_chan_ctx* ctx,
-                                       struct hwkey_msg* hdr,
+                                       struct hwkey_msg* msg,
                                        const uint8_t* ikm_data,
                                        size_t ikm_len) {
     int rc;
     size_t key_len = sizeof(key_data);
 
     /* check requested key derivation function */
-    if (hdr->arg1 == HWKEY_KDF_VERSION_BEST)
-        hdr->arg1 = HWKEY_KDF_VERSION_1; /* we only support V1 */
+    if (msg->arg1 == HWKEY_KDF_VERSION_BEST)
+        msg->arg1 = HWKEY_KDF_VERSION_1; /* we only support V1 */
 
-    switch (hdr->arg1) {
+    switch (msg->arg1) {
     case HWKEY_KDF_VERSION_1:
-        hdr->status = derive_key_v1(&ctx->uuid, ikm_data, ikm_len, key_data,
-                                    &key_len);
+        msg->header.status = derive_key_v1(&ctx->uuid, ikm_data, ikm_len,
+                                           key_data, &key_len);
         break;
 
     default:
-        TLOGE("%u is unsupported KDF function\n", hdr->arg1);
+        TLOGE("%u is unsupported KDF function\n", msg->arg1);
         key_len = 0;
-        hdr->status = HWKEY_ERR_NOT_IMPLEMENTED;
+        msg->header.status = HWKEY_ERR_NOT_IMPLEMENTED;
     }
 
-    rc = hwkey_send_rsp(ctx, hdr, key_data, key_len);
+    rc = hwkey_send_rsp(ctx, msg, key_data, key_len);
     if (key_len) {
         /* sanitize key buffer */
         memset(key_data, 0, key_len);
@@ -208,9 +208,9 @@ static int hwkey_handle_derive_key_cmd(struct hwkey_chan_ctx* ctx,
 static int hwkey_chan_handle_msg(struct hwkey_chan_ctx* ctx) {
     int rc;
     size_t req_data_len;
-    struct hwkey_msg hdr;
+    struct hwkey_msg msg;
 
-    rc = tipc_recv_two_segments(ctx->chan, &hdr, sizeof(hdr), req_data,
+    rc = tipc_recv_two_segments(ctx->chan, &msg, sizeof(msg), req_data,
                                 sizeof(req_data) - 1);
     if (rc < 0) {
         TLOGE("failed (%d) to recv msg from chan %d\n", rc, ctx->chan);
@@ -218,24 +218,24 @@ static int hwkey_chan_handle_msg(struct hwkey_chan_ctx* ctx) {
     }
 
     /* calculate payload length */
-    req_data_len = (size_t)rc - sizeof(hdr);
+    req_data_len = (size_t)rc - sizeof(msg);
 
     /* handle it */
-    switch (hdr.cmd) {
+    switch (msg.header.cmd) {
     case HWKEY_GET_KEYSLOT:
         req_data[req_data_len] = 0; /* force zero termination */
-        rc = hwkey_handle_get_keyslot_cmd(ctx, &hdr, (const char*)req_data);
+        rc = hwkey_handle_get_keyslot_cmd(ctx, &msg, (const char*)req_data);
         break;
 
     case HWKEY_DERIVE:
-        rc = hwkey_handle_derive_key_cmd(ctx, &hdr, req_data, req_data_len);
+        rc = hwkey_handle_derive_key_cmd(ctx, &msg, req_data, req_data_len);
         memset(req_data, 0, req_data_len); /* sanitize request buffer */
         break;
 
     default:
-        TLOGE("Unsupported request: %d\n", (int)hdr.cmd);
-        hdr.status = HWKEY_ERR_NOT_IMPLEMENTED;
-        rc = hwkey_send_rsp(ctx, &hdr, NULL, 0);
+        TLOGE("Unsupported request: %d\n", (int)msg.header.cmd);
+        msg.header.status = HWKEY_ERR_NOT_IMPLEMENTED;
+        rc = hwkey_send_rsp(ctx, &msg, NULL, 0);
     }
 
     return rc;
