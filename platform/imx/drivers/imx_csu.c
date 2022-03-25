@@ -10,6 +10,7 @@
 #include <trace.h>
 #include <platform/imx_csu.h>
 #include <platform/imx_lcdif.h>
+#include <platform/imx_dcss.h>
 #include <reg.h>
 #include <lib/sm/smcall.h>
 #include <lib/sm.h>
@@ -35,7 +36,9 @@
             (u)->clock_seq_and_node[2], (u)->clock_seq_and_node[3],            \
             (u)->clock_seq_and_node[4], (u)->clock_seq_and_node[5],            \
             (u)->clock_seq_and_node[6], (u)->clock_seq_and_node[7]);
-
+#if defined(MACH_IMX8MQ)
+extern int32_t imx_dcss_secure_disp(uint32_t cmd, user_addr_t user_ptr);
+#endif
 static struct uuid hwsecure_ta_uuid = {
     0xc52ae02f,
     0xfa45,
@@ -103,6 +106,8 @@ static int32_t sys_csu_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
             if (check_uuid_equal(&app->props.uuid, &secure_fb_impl_ta_uuid))
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
                 return imx_secure_disp(cmd, user_ptr);
+#elif defined(MACH_IMX8MQ)
+                return imx_dcss_secure_disp(cmd, user_ptr);
 #endif
             else
                 return CSU_ERR;
