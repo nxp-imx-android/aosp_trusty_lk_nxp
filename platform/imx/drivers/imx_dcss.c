@@ -96,8 +96,17 @@ static long dcss_writel(u32 value, u32 reg) {
         || (((IMX_DCSS_REG_RANGE1_MIN + reg) >= IMX_DCSS_REG_RANGE2_MIN) && ((IMX_DCSS_REG_RANGE1_MIN + reg) < IMX_DCSS_REG_RANGE2_MAX))) {
         if (secure_flag) {
             for (i = 0; i < (int)(sizeof(secure_addr_regs)/sizeof(secure_addr_regs[0])); i++) {
-                if (((DCSS_BASE_VIRT + reg) == secure_addr_regs[i]) && ((value >= MEMBASE) && (value < MEMBASE + MEMSIZE)))
-                    return 0;
+                if (((IMX_DCSS_REG_RANGE1_MIN + reg) == secure_addr_regs[i])) {
+                    /* if the reg is ctxld_db or ctxld_sb buffer, will judge whether it is db_paddr,
+                     * sb_paddr or 0x0, if the value is, will write into reg, or return 0*/
+                    if ((((IMX_DCSS_REG_RANGE1_MIN + reg) == 0x32E23010) && ((value == db_paddr[0]) || (value == db_paddr[1]) || (value == 0))) ||
+                        (((IMX_DCSS_REG_RANGE1_MIN + reg) == 0x32E23018) && ((value == sb_paddr[0]) || (value == sb_paddr[1]) || (value == 0)))) {
+                        writel(value, (uint8_t* )DCSS_BASE_VIRT + reg);
+                        return 0;
+                    }
+                    if ((value >= MEMBASE) && (value < MEMBASE + MEMSIZE))
+                        return 0;
+                }
             }
         }
 
