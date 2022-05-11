@@ -70,10 +70,10 @@ static u32 secure_addr_regs[] = {0x32E23010, 0x32E23018, 0x32E23020,
                                  0x32E24010,
                                  0x32E21010, 0x32E22010};
 
-static u32 secure_reg_range[3][2] = {{0x32E18000, 0x32E19000}, {0x32E1C000, 0x32E1C400},
-                                     {0x32E00000, 0x32E04000}};
-static u32 secure_reg_range_ofs[3][2] = {{0x18000, 0x19000}, {0x1C000, 0x1C400},
-                                         {0x0, 0x4000}};
+static u32 secure_reg_range[4][2] = {{0x32E18000, 0x32E19000}, {0x32E1C000, 0x32E1C400},
+                                     {0x32E00000, 0x32E04000}, {0x32E20010, 0x32E20018}};
+static u32 secure_reg_range_ofs[4][2] = {{0x18000, 0x19000}, {0x1C000, 0x1C400},
+                                         {0x0, 0x4000}, {0x20010, 0x20018}};
 
 
 static void wait_for_dcss_irq() {
@@ -83,8 +83,8 @@ static void wait_for_dcss_irq() {
     while (timeout) {
         timeout--;
         val = readl((uint8_t*)DCSS_BASE_VIRT + 0x23000);
-        if (val & CTXLD_IRQ_COMPLETION &&
-            !(val & CTXLD_ENABLE)) {
+	// only judge ctxld_enable, if ctxld is idle, CTXLD_ENABLE will clear.
+        if (!(val & CTXLD_ENABLE)) {
             return;
         }
     }
@@ -113,7 +113,8 @@ static long dcss_writel(u32 value, u32 reg) {
         if (tee_ctrl_dcss) {
             if (((reg < secure_reg_range_ofs[0][1]) && (reg >= secure_reg_range_ofs[0][0]))
                 || ((reg < secure_reg_range_ofs[1][1]) && (reg >= secure_reg_range_ofs[1][0]))
-                || ((reg < secure_reg_range_ofs[2][1]) && (reg >= secure_reg_range_ofs[2][0]))) {
+                || ((reg < secure_reg_range_ofs[2][1]) && (reg >= secure_reg_range_ofs[2][0]))
+                || ((reg < secure_reg_range_ofs[3][1]) && (reg >= secure_reg_range_ofs[3][0]))) {
                     return 0;
             }
         }
@@ -355,7 +356,6 @@ int32_t imx_dcss_secure_disp(uint32_t cmd, user_addr_t user_ptr) {
         tee_ctrl_dcss = true;
 
         wait_for_dcss_irq();
-        g_curr_ctx ^= 1;
         last_tee_fb_addr = msg->paddr;
         init_dpr_ch1_regs();
         init_scaler_ch1_regs();
@@ -377,6 +377,7 @@ int32_t imx_dcss_secure_disp(uint32_t cmd, user_addr_t user_ptr) {
         arg.params[0] = g_curr_ctx;
         imx_liux_dcss_ctxld(&arg);
         dcss_writel(1, DCSS_CTXLD_CONTROL_STATUS_SET);
+
         g_curr_ctx ^= 1;
         ctx_size[g_curr_ctx][CTX_DB] = 0;
         ctx_size[g_curr_ctx][CTX_SB_HP] = 0;
@@ -544,7 +545,8 @@ static int imx_linux_dcss_buffer_write(struct smc32_args* args) {
                 if (tee_ctrl_dcss) {
                     if (((reg_ofs < secure_reg_range[0][1]) && (reg_ofs >= secure_reg_range[0][0]))
                         || ((reg_ofs < secure_reg_range[1][1]) && (reg_ofs >= secure_reg_range[1][0]))
-                        || ((reg_ofs < secure_reg_range[2][1]) && (reg_ofs >= secure_reg_range[2][0]))) {
+                        || ((reg_ofs < secure_reg_range[2][1]) && (reg_ofs >= secure_reg_range[2][0]))
+                        || ((reg_ofs < secure_reg_range[3][1]) && (reg_ofs >= secure_reg_range[3][0]))) {
                         return 0;
                     }
                 }
