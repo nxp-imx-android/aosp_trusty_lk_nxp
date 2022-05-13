@@ -1,0 +1,29 @@
+{
+    "header": "nxp_confirmationui_consts.h",
+    "constants": [
+        {
+            "name": "SECUREUI_TOP_X",
+            "value": 0,
+            "type": "int",
+            "unsigned": true
+        },
+         {
+             "name": "SECUREUI_TOP_Y",
+             "value": 0,
+             "type": "int",
+             "unsigned": true
+         },
+         {
+             "name": "SECUREUI_WIDTH",
+             "value": 1920,
+             "type": "int",
+             "unsigned": true
+         },
+         {
+             "name": "SECUREUI_HEIGHT",
+             "value": 1080,
+             "type": "int",
+             "unsigned": true
+         }
+     ]
+}
