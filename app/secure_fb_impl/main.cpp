@@ -33,13 +33,12 @@
 #include <lib/hwsecure/hwsecure.h>
 #include <tuple>
 #include <imx-regs.h>
+#include <nxp_confirmationui_consts.h>
 
 #define TLOG_TAG "secure_fb_impl"
 
 #define PAGE_SIZE() (getauxval(AT_PAGESZ))
 
-static constexpr const uint32_t kDeviceWidth = 1920;
-static constexpr const uint32_t kDeviceHeight = 1080;
 static constexpr const uint32_t kFbCount = 1;
 static constexpr const uint32_t kFbId = 0xdeadbeef;
 
@@ -157,13 +156,13 @@ public:
 
 static secure_fb_handle_t secure_fb_impl_init() {
     auto sfb = new SecureFbImpl();
-    sfb->Init(kDeviceWidth, kDeviceHeight);
     return sfb;
 }
 
 static int secure_fb_impl_get_fbs(secure_fb_handle_t sfb_handle,
                            struct secure_fb_impl_buffers* buffers) {
     SecureFbImpl* sfb = reinterpret_cast<SecureFbImpl*>(sfb_handle);
+    sfb->Init(SECUREUI_WIDTH, SECUREUI_HEIGHT);
     return sfb->GetFbs(buffers);
 }
 
