@@ -28,6 +28,7 @@
 #define SMC_IMX_DCSS_IRQ_REG SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 5)
 #define SMC_IMX_DCSS_IRQ_ECHO SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 6)
 #define SMC_IMX_DCSS_RELEASE_BUFFER SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 7)
+#define SMC_IMX_DCSS_GET_DIS_ULC SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 8)
 
 static bool tee_ctrl_dcss = false;
 static uint32_t last_tee_fb_addr = 0x0;
@@ -60,6 +61,10 @@ static u16 dcss_ctxld_ctx_size[3] = {
 };
 
 static u32 g_curr_ctx = 0;
+
+static struct secureui_params secure_ui_param = {0,0,1920,1080};
+static struct dtg_dis_ulc dis_ulc = {0xbf, 0x2c}; // when crtc mode change, the param will be change,
+                                                  // normal the para only initialize once.
 //Prevents Secure Memory from being written to the following registers in Secure mode.
 static u32 secure_addr_regs[] = {0x32E23010, 0x32E23018, 0x32E23020,
                                  0x32E15900, 0x32E15980,
@@ -147,17 +152,26 @@ static int imx_init_secureui(u32 ctxId, u32 val, u32 reg) {
 
 static void init_dtg_ch1_regs() {
     imx_init_secureui(CTX_DB, 0x2c00bf, 0x00020008);
-    imx_init_secureui(CTX_DB, 0x2c00bf, 0x00020010);
-    imx_init_secureui(CTX_DB, 0x464083f, 0x00020014);
+    // calculate ch1 pos
+    u16 p_ulc_x, p_ulc_y;
+    u16 p_lrc_x, p_lrc_y;
+
+    p_ulc_x = dis_ulc.dis_ulc_x + secure_ui_param.x;
+    p_ulc_y = dis_ulc.dis_ulc_y + secure_ui_param.y;
+    p_lrc_x = p_ulc_x + secure_ui_param.w;
+    p_lrc_y = p_ulc_y + secure_ui_param.h;
+
+    imx_init_secureui(CTX_DB, ((p_ulc_y << TC_Y_POS) | p_ulc_x), 0x00020010);
+    imx_init_secureui(CTX_DB, ((p_lrc_y << TC_Y_POS) | p_lrc_x), 0x00020014);
     imx_init_secureui(CTX_DB, 0x0, 0x0002002c);
 }
 static void init_dpr_ch1_regs() {
     imx_init_secureui(CTX_SB_HP, 0xc6203, 0x00018050);
-    imx_init_secureui(CTX_SB_HP, 0x1e000000, 0x00018070);
+    imx_init_secureui(CTX_SB_HP, ((secure_ui_param.w * 4) << 16), 0x00018070);
     imx_init_secureui(CTX_SB_HP, 0x2, 0x00018090);
-    imx_init_secureui(CTX_SB_HP, 0x780, 0x000180a0);
+    imx_init_secureui(CTX_SB_HP, secure_ui_param.w, 0x000180a0);
 
-    imx_init_secureui(CTX_SB_HP, 0x438, 0x000180b0);
+    imx_init_secureui(CTX_SB_HP, secure_ui_param.h, 0x000180b0);
     imx_init_secureui(CTX_SB_HP, 0x280, 0x000180f0);
     imx_init_secureui(CTX_SB_HP, 0xf0, 0x00018100);
     imx_init_secureui(CTX_SB_HP, 0x38, 0x00018200);
@@ -169,10 +183,12 @@ static void init_scaler_ch1_regs() {
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c00c);
     imx_init_secureui(CTX_SB_HP, 0x2, 0x0001c010);
     imx_init_secureui(CTX_SB_HP, 0x2, 0x0001c014);
-    imx_init_secureui(CTX_SB_HP, 0x437077f, 0x0001c018);
-    imx_init_secureui(CTX_SB_HP, 0x437077f, 0x0001c01c);
-    imx_init_secureui(CTX_SB_HP, 0x437077f, 0x0001c020);
-    imx_init_secureui(CTX_SB_HP, 0x437077f, 0x0001c024);
+
+    u32 scale_param = (((secure_ui_param.h -1) << 16) | (secure_ui_param.w - 1));
+    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c018);
+    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c01c);
+    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c020);
+    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c024);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c048);
     imx_init_secureui(CTX_SB_HP, 0x2000, 0x0001c04c);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c050);
@@ -352,10 +368,11 @@ static int imx_liux_dcss_ctxld(struct smc32_args* args) {
 int32_t imx_dcss_secure_disp(uint32_t cmd, user_addr_t user_ptr) {
     struct csu_cfg_secure_disp_msg *msg = (struct csu_cfg_secure_disp_msg*) user_ptr;
     if (msg->enable) {
-        printf("imx_dcss_secure_disp enable \n");
+        printf("imx_dcss_secure_disp enable\n");
         tee_ctrl_dcss = true;
 
         wait_for_dcss_irq();
+
         last_tee_fb_addr = msg->paddr;
         init_dpr_ch1_regs();
         init_scaler_ch1_regs();
@@ -363,8 +380,9 @@ int32_t imx_dcss_secure_disp(uint32_t cmd, user_addr_t user_ptr) {
         init_dec400d_ch1_regs();
         init_dtg_ch1_regs();
         init_ss_regs();
-        u32 width = 1920;
-        u32 height = 1080;
+
+        u32 width = secure_ui_param.w;
+        u32 height = secure_ui_param.h;
         imx_init_secureui(CTX_SB_HP, width, 0x180a0); //width
         imx_init_secureui(CTX_SB_HP, height, 0x180b0); //height
         imx_init_secureui(CTX_SB_HP, ((width * 4) << 16), 0x18070);
@@ -586,6 +604,12 @@ static int imx_linux_dcss_irqsteer(struct smc32_args* args) {
     return 0;
 }
 
+static int imx_linux_dcss_get_dis_ulc(struct smc32_args* args) {
+    dis_ulc.dis_ulc_x = args->params[0];
+    dis_ulc.dis_ulc_y = args->params[1];
+    return 0;
+}
+
 static long imx_dcss_fastcall(struct smc32_args* args) {
     switch (args->smc_nr) {
         case SMC_IMX_DCSS_ECHO:
@@ -604,6 +628,8 @@ static long imx_dcss_fastcall(struct smc32_args* args) {
             return imx_linux_dcss_irqsteer(args);
         case SMC_IMX_DCSS_RELEASE_BUFFER:
             return imx_linux_dcss_release_buffer();
+        case SMC_IMX_DCSS_GET_DIS_ULC:
+            return imx_linux_dcss_get_dis_ulc(args);
     }
     return 0;
 }
@@ -627,11 +653,22 @@ static int32_t switch_secure_ctxld_buffer(user_addr_t user_ptr) {
     return 0;
 }
 
+static int32_t set_secureui_params(user_addr_t user_ptr) {
+    struct secureui_params *msg = (struct secureui_params *)user_ptr;
+    secure_ui_param.x = msg->x;
+    secure_ui_param.y = msg->y;
+    secure_ui_param.w = msg->w;
+    secure_ui_param.h = msg->h;
+    return 0;
+}
+
 static int32_t sys_dcss_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
     CHECK_FD(fd);
     switch (cmd) {
         case DCSS_ENABLE_SECURE_CTXLD_BUFFER:
             return switch_secure_ctxld_buffer(user_ptr);
+        case DCSS_SET_SECUREUI_PARAMS:
+            return set_secureui_params(user_ptr);
     }
     return 0;
 }
