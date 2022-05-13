@@ -9,6 +9,7 @@
 
 #define SYSCALL_PLATFORM_FD_DCSS 0x9
 #define DCSS_ENABLE_SECURE_CTXLD_BUFFER 0x00000001
+#define DCSS_SET_SECUREUI_PARAMS 0x00000002
 
 #define DCSS_CTXLD_DB_BASE_ADDR    0x10
 #define DCSS_CTXLD_DB_COUNT    0x14
@@ -23,10 +24,8 @@
 #define CTX_ITEM_SIZE                   sizeof(struct dcss_ctxld_item)
 
 #define   CTXLD_ENABLE         (1<<1)
-#define   DB_COMP              (1<<17)
-#define   SB_HP_COMP           (1<<18)
-#define   SB_LP_COMP           (1<<19)
-#define   CTXLD_IRQ_COMPLETION		(DB_COMP | SB_HP_COMP | SB_LP_COMP)
+
+#define   TC_Y_POS   16
 
 enum dcss_ctxld_ctx_type {
     CTX_DB,
@@ -61,6 +60,23 @@ enum ctxld_operation_type {
 
 struct dcss_msg {
     uint32_t enable;
+};
+/**secureui_params
+ *@x: the x coordinate of the display position.
+ *@y: the y coordinate of the display position.
+ *@w: the witdh of secure UI.
+ *@h: the height of secure UI.
+**/
+struct secureui_params {
+    uint32_t x;
+    uint32_t y;
+    uint32_t w;
+    uint32_t h;
+};
+
+struct dtg_dis_ulc {
+    uint32_t dis_ulc_x;
+    uint32_t dis_ulc_y;
 };
 
 #endif
