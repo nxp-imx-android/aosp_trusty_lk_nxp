@@ -151,11 +151,11 @@ void caam_set_did(void) {
     cfg_ms = 0x1 << 0;  /* JRxDID_MS_PRIM_DID */
 #endif
 
-    cfg_ms |= (0x1 << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
-    cfg_ms |= (0x1 << 16); /* JRxDID_MS_AMTD */
-    cfg_ms |= (0x1 << 19); /* JRxDID_MS_PRIM_ICID */
-    cfg_ms |= (0x1 << 31); /* JRxDID_MS_LDID */
-    cfg_ms |= (0x1 << 17); /* JRxDID_MS_LAMTD */
+    cfg_ms |= (0x1UL << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
+    cfg_ms |= (0x1UL << 16); /* JRxDID_MS_AMTD */
+    cfg_ms |= (0x1UL << 19); /* JRxDID_MS_PRIM_ICID */
+    cfg_ms |= (0x1UL << 31); /* JRxDID_MS_LDID */
+    cfg_ms |= (0x1UL << 17); /* JRxDID_MS_LAMTD */
 
     writel(cfg_ms, CAAM_JRMIDR);
     writel(cfg_ls, CAAM_JRLIDR);
