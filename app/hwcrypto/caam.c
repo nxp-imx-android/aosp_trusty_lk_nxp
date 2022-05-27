@@ -53,12 +53,12 @@
 #define FSL_CAAM_MP_PUBK_BYTES 64
 #define PDB_MP_CSEL_SHIFT 17
 #define PDB_MP_CSEL_WIDTH 4
-#define PDB_MP_CSEL_P256 0x3 << PDB_MP_CSEL_SHIFT /* P-256 */
-#define PDB_MP_CSEL_P384 0x4 << PDB_MP_CSEL_SHIFT /* P-384 */
-#define PDB_MP_CSEL_P521 0x5 << PDB_MP_CSEL_SHIFT /* P-521 */
+#define PDB_MP_CSEL_P256 0x3UL << PDB_MP_CSEL_SHIFT /* P-256 */
+#define PDB_MP_CSEL_P384 0x4UL << PDB_MP_CSEL_SHIFT /* P-384 */
+#define PDB_MP_CSEL_P521 0x5UL << PDB_MP_CSEL_SHIFT /* P-521 */
 #define ERR_BAD_LEN             (-32)
 
-#define CACHE_ALIGN 64
+#define CACHE_ALIGN 64UL
 #define ALIGN(x,y) (((x)+(y-1))&~(y-1))
 
 static struct caam_job_rings* g_rings;
@@ -167,7 +167,7 @@ static bool cipher_arg_is_valid(size_t len, const uint8_t* data_ptr) {
 }
 
 static int handle_sg_buffer(void *buf, size_t len, void **tmp_buf,
-                            caam_sgt_entry_t **sg, int *sg_pa) {
+                            caam_sgt_entry_t **sg, uint32_t *sg_pa) {
     struct dma_pmem pmem[4];
     caam_sgt_entry_t *sg_ptr = NULL;
     void *buf_ptr = NULL;
@@ -218,7 +218,7 @@ static int handle_sg_buffer(void *buf, size_t len, void **tmp_buf,
         goto fail;
     }
 
-    *sg_pa = pmem[0].paddr;
+    *sg_pa = (uint32_t)(pmem[0].paddr);
     return 0;
 
 // on error
@@ -231,7 +231,7 @@ fail:
     return -1;
 }
 
-static int handle_buffer(void *buf, size_t len, void **tmp_buf, int *pa)
+static int handle_buffer(void *buf, size_t len, void **tmp_buf, uint32_t *pa)
 {
     struct dma_pmem pmem;
     int entry;
@@ -261,7 +261,7 @@ static int handle_buffer(void *buf, size_t len, void **tmp_buf, int *pa)
         *tmp_buf = buf_ptr;
     }
 
-    *pa = pmem.paddr;
+    *pa = (uint32_t)(pmem.paddr);
 
     return 0;
 }
@@ -398,15 +398,15 @@ int init_caam_env(void) {
     uint32_t cfg_ls = 0;
 
 #ifdef MACH_IMX8ULP
-    cfg_ms = 0x7 << 0;  /* JRxDID_MS_PRIM_DID */
+    cfg_ms = 0x7UL << 0;  /* JRxDID_MS_PRIM_DID */
 #else
-    cfg_ms = 0x1 << 0;  /* JRxDID_MS_PRIM_DID */
+    cfg_ms = 0x1UL << 0;  /* JRxDID_MS_PRIM_DID */
 #endif
-    cfg_ms |= (0x1 << 4) | (0x1 << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
-    cfg_ms |= (0x1 << 16); /* JRxDID_MS_AMTD */
-    cfg_ms |= (0x1 << 19); /* JRxDID_MS_PRIM_ICID */
-    cfg_ms |= (0x1 << 31); /* JRxDID_MS_LDID */
-    cfg_ms |= (0x1 << 17); /* JRxDID_MS_LAMTD */
+    cfg_ms |= (0x1UL << 4) | (0x1UL << 15); /* JRxDID_MS_PRIM_TZ | JRxDID_MS_TZ_OWN */
+    cfg_ms |= (0x1UL << 16); /* JRxDID_MS_AMTD */
+    cfg_ms |= (0x1UL << 19); /* JRxDID_MS_PRIM_ICID */
+    cfg_ms |= (0x1UL << 31); /* JRxDID_MS_LDID */
+    cfg_ms |= (0x1UL << 17); /* JRxDID_MS_LAMTD */
 
     writel(cfg_ms, CAAM_JR2MIDR);
     writel(cfg_ls, CAAM_JR2LIDR);
@@ -1098,7 +1098,7 @@ int caam_aes_ecb(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *key_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, key_pa;
     int ret = -1;
 
     /* text in */
@@ -1233,7 +1233,7 @@ int caam_aes_cbc(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *iv_tmp = NULL, *key_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
     int ret = -1;
 
     /* text in */
@@ -1389,7 +1389,7 @@ int caam_aes_ctr(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *iv_tmp = NULL, *key_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
     int ret = -1;
 
     /* text in */
@@ -1598,7 +1598,7 @@ int caam_aes_gcm(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL, *aad_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL, *aad_tmp = NULL;
     void *iv_tmp = NULL, *key_tmp = NULL, *tag_in_tmp = NULL, *tag_out_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, aad_sg_pa, iv_pa, key_pa, tag_in_pa, tag_out_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, aad_sg_pa, iv_pa, key_pa, tag_in_pa, tag_out_pa;
     int ret = -1;
 
     /* text in */
@@ -1825,7 +1825,7 @@ int caam_tdes_ecb(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *key_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, key_pa;
     int ret = -1;
 
     /* text in */
@@ -1955,7 +1955,7 @@ int caam_tdes_cbc(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *iv_tmp = NULL, *key_tmp = NULL;
-    int input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
     int ret = -1;
 
     /* text in */
