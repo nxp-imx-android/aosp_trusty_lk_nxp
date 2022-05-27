@@ -9,17 +9,17 @@
 #define JRCR_RESET       (1)
 #define JRINTR_JRI          (0x1)
 #define BS_TRNG_ENT_DLY     (16)
-#define BM_TRNG_ENT_DLY     (0xffff << BS_TRNG_ENT_DLY)
+#define BM_TRNG_ENT_DLY     (0xffffUL << BS_TRNG_ENT_DLY)
 #define BM_TRNG_SAMP_MODE   (3)
 #define TRNG_SAMP_MODE_RAW_ES_SC (1)
 #define BS_JRINTR_HALT      (2)
 #define BS_JRCFGR_LS_ICTT   (16)
 #define BS_JRCFGR_LS_ICDCT  (8)
-#define BM_JRCFGR_LS_ICDCT  (0xFF << BS_JRCFGR_LS_ICDCT)
+#define BM_JRCFGR_LS_ICDCT  (0xFFUL << BS_JRCFGR_LS_ICDCT)
 #define BS_JRCFGR_LS_ICEN   (1)
-#define BM_JRCFGR_LS_ICEN   (0x1 << BS_JRCFGR_LS_ICEN)
+#define BM_JRCFGR_LS_ICEN   (0x1UL << BS_JRCFGR_LS_ICEN)
 #define BS_JRCFGR_LS_IMSK   (0)
-#define BM_JRCFGR_LS_IMSK   (0x1 << BS_JRCFGR_LS_IMSK)
+#define BM_JRCFGR_LS_IMSK   (0x1UL << BS_JRCFGR_LS_IMSK)
 #define BS_MCFGR_WDE        (30)
 #define BM_MCFGR_WDE        (0x1 << BS_MCFGR_WDE)
 #define JRINTR_HALT_ONGOING (0x1 << BS_JRINTR_HALT)
@@ -141,30 +141,30 @@
 
 /* State */
 #define BS_ALGO_RNG_AS            (2)
-#define BM_ALGO_RNG_AS            (0x3 << BS_ALGO_RNG_AS)
-#define ALGO_RNG_GENERATE         (0x0 << BS_ALGO_RNG_AS)
+#define BM_ALGO_RNG_AS            (0x3UL << BS_ALGO_RNG_AS)
+#define ALGO_RNG_GENERATE         (0x0UL << BS_ALGO_RNG_AS)
 #define ALGO_RNG_INSTANTIATE      BIT(BS_ALGO_RNG_AS)
 
-#define CAAM_HDR_CTYPE            (0x16u << 27)
+#define CAAM_HDR_CTYPE            (0x16UL << 27)
 #define CAAM_HDR_ONE              BIT(23)
 #define CAAM_HDR_START_INDEX(x)   (((x) & 0x3F) << 16)
 #define CAAM_HDR_DESCLEN(x)       ((x) & 0x3F)
-#define CAAM_PROTOP_CTYPE         (0x10u << 27)
+#define CAAM_PROTOP_CTYPE         (0x10UL << 27)
 
 /* Prediction Resistance */
 #define ALGO_RNG_PR               BIT(1)
-#define CAAM_C1_RNG               ((0x50 << 16) | (2 << 24))
+#define CAAM_C1_RNG               ((0x50UL << 16) | (2UL << 24))
 
 #define BS_JUMP_LOCAL_OFFSET      (0)
-#define BM_JUMP_LOCAL_OFFSET      (0xFF << BS_JUMP_LOCAL_OFFSET)
+#define BM_JUMP_LOCAL_OFFSET      (0xFFUL << BS_JUMP_LOCAL_OFFSET)
 
-#define CAAM_C1_JUMP              ((0x14u << 27) | (1 << 25))
+#define CAAM_C1_JUMP              ((0x14UL << 27) | (1UL<< 25))
 #define CAAM_JUMP_LOCAL           (0 << 20)
 #define CAAM_JUMP_TST_ALL_COND_TRUE (0 << 16)
 #define CAAM_JUMP_OFFSET(off)     (((off) << BS_JUMP_LOCAL_OFFSET) & BM_JUMP_LOCAL_OFFSET)
 
-#define CAAM_C0_LOAD_IMM          ((0x2 << 27) | (1 << 23))
-#define CAAM_DST_CLEAR_WRITTEN    (0x8 << 16)
+#define CAAM_C0_LOAD_IMM          ((0x2UL << 27) | (1UL << 23))
+#define CAAM_DST_CLEAR_WRITTEN    (0x8UL << 16)
 
 #define RNG_DESC_SH0_SIZE   (ARRAY_SIZE(rng_inst_sh0_desc))
 #define RNG_DESC_SH1_SIZE   (ARRAY_SIZE(rng_inst_sh1_desc))
@@ -172,12 +172,12 @@
 #define RNG_DESC_MAX_SIZE   (RNG_DESC_SH0_SIZE + RNG_DESC_SH1_SIZE + RNG_DESC_KEYS_SIZE)
 
 #define JRCFG_LS_IMSK 0x00000001
-#define JOB_RING_STS (0xF << 28)
+#define JOB_RING_STS (0xFUL << 28)
 #define RDSTA_IF0        (1)
 #define RDSTA_IF1        (2)
-#define RDSTA_SKVN (1 << 30)
-#define RTMCTL_PGM (1 << 16)
-#define RTMCTL_ERR (1 << 12)
+#define RDSTA_SKVN (1UL << 30)
+#define RTMCTL_PGM (1UL << 16)
+#define RTMCTL_ERR (1UL << 12)
 #define RTMCTL_ACC       BIT(5)
 #define RTMCTL_FCT_FAIL  BIT(8)
 #define RNG_TRIM_OSC_DIV 0
