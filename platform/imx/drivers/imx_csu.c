@@ -20,7 +20,7 @@
 #define LOCAL_TRACE     5
 
 #define CSU_SA_OFFSET(id) (0x218 + (id/16)*4)
-#define CSU_SA_SET(id) (1 << ((id % 16)*2))
+#define CSU_SA_SET(id) (1UL << ((id % 16)*2))
 #define CSU_CSL_OFFSET(id) ((id/2)*4)
 #define CSU_CSL_SET(id,val) (val << ((id%2)*16))
 #define CSU_CSL_CLEAN(id,val) (id%2 ? (val & 0x0000FFFF) : (val & 0xFFFF0000))
