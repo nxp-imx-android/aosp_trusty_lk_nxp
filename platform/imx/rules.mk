@@ -73,6 +73,11 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_dcss.c
 endif
 
+ifeq (true,$(call TOBOOL,$(WITH_DCNANO_SUPPORT)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/imx_dcnano.c
+endif
+
 
 ifeq (true,$(call TOBOOL,$(IMX_USE_LPUART)))
 MODULE_SRCS += \
