@@ -15,15 +15,20 @@
  */
 
 #include <devices/device_parameters.h>
-
+#include <imx-regs.h>
 namespace devices {
 
 using namespace teeui;
 
 std::vector<context<ConUIParameters>> getDeviceContext(bool magnified) {
     context<ConUIParameters> ctx(6.45211, 400.0 / 412.0);
+#if defined(MACH_IMX8ULP)
+    ctx.setParam<RightEdgeOfScreen>(720_px);
+    ctx.setParam<BottomOfScreen>(1280_px);
+#else
     ctx.setParam<RightEdgeOfScreen>(1920_px);
     ctx.setParam<BottomOfScreen>(1080_px);
+#endif
     ctx.setParam<PowerButtonTop>(20.26_mm);
     ctx.setParam<PowerButtonBottom>(30.26_mm);
     ctx.setParam<VolUpButtonTop>(40.26_mm);

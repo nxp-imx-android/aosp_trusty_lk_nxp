@@ -34,6 +34,9 @@
 #include <tuple>
 #include <imx-regs.h>
 #include <nxp_confirmationui_consts.h>
+#if defined(MACH_IMX8ULP)
+#include <platform/imx_dcnano.h>
+#endif
 
 #define TLOG_TAG "secure_fb_impl"
 
@@ -65,14 +68,17 @@ public:
 
         msg.enable = 0;
         msg.paddr = 0;
+#if defined(MACH_IMX8ULP)
+        _trusty_ioctl(SYSCALL_PLATFORM_FD_DCNANO, CSU_IOCMD_SECURE_DISP, &msg);
+#else
         _trusty_ioctl(SYSCALL_PLATFORM_FD_CSU, CSU_IOCMD_SECURE_DISP, &msg);
+#endif
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         set_lcdif_secure_access(false);
 #endif
     }
 
     int Init(uint32_t width, uint32_t height) {
-
         uint32_t fb_size =
                 round_up(sizeof(uint32_t) * width * height, PAGE_SIZE());
 
@@ -147,8 +153,11 @@ public:
         struct csu_cfg_secure_disp_msg msg;
         msg.enable = 1;
         msg.paddr = paddr;
+#if defined(MACH_IMX8ULP)
+        _trusty_ioctl(SYSCALL_PLATFORM_FD_DCNANO, CSU_IOCMD_SECURE_DISP, &msg);
+#else
         _trusty_ioctl(SYSCALL_PLATFORM_FD_CSU, CSU_IOCMD_SECURE_DISP, &msg);
-
+#endif
         /* This is a no-op in the case. */
         return SECURE_FB_ERROR_OK;
     }

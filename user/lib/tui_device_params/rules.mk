@@ -29,6 +29,7 @@ MODULE_INCLUDES += \
         $(LOCAL_DIR)/include \
         $(TRUSTY_TOP)/trusty/user/app/confirmationui/examples/layouts/include \
         $(TRUSTY_TOP)/trusty/user/app/confirmationui/src \
+        trusty/hardware/nxp/platform/imx/soc/$(PLATFORM_SOC)/include
 
 MODULE_LIBRARY_DEPS += \
         trusty/user/base/lib/teeui-stub \
