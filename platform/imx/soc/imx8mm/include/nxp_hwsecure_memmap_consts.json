@@ -2,6 +2,18 @@
     "header": "nxp_memmap_consts.h",
     "constants":[
         {
+            "name": "CSU_MMIO_ID",
+            "value": 5,
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "RDC_MMIO_ID",
+            "value": 6,
+            "type": "int",
+            "unsigned": false
+        },
+        {
             "name": "CSU_BASE_ADDR",
             "value": "0x303E0000",
             "type": "int",

@@ -16,11 +16,11 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
-MANIFEST := $(LOCAL_DIR)/manifest.json
+MANIFEST := \
+        $(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwsecure_manifest.json \
 
 CONSTANTS := \
         $(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwsecure_memmap_consts.json \
-        $(LOCAL_DIR)/nxp_hwsecure_consts.json \
 
 MODULE_INCLUDES += \
         $(LOCAL_DIR)/include \
