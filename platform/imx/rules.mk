@@ -75,7 +75,8 @@ endif
 
 ifeq (true,$(call TOBOOL,$(WITH_DCNANO_SUPPORT)))
 MODULE_SRCS += \
-	$(LOCAL_DIR)/drivers/imx_dcnano.c
+	$(LOCAL_DIR)/drivers/imx_dcnano.c \
+	$(LOCAL_DIR)/drivers/imx_xrdc.c
 endif
 
 
