@@ -7,6 +7,7 @@
 
 __BEGIN_CDECLS
 
+int set_dcnano_secure_access(int enable);
 int set_lcdif_secure_access(int enable);
 int set_widevine_g2d_secure_mode(int secure);
 int get_widevine_g2d_secure_mode(int* secure_mode);

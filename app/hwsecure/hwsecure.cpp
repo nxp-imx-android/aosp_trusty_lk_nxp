@@ -10,22 +10,24 @@
 #include <sys/ioctl.h>
 #include <stdarg.h>
 #include <interface/hwsecure/hwsecure.h>
-#include <platform/imx_csu.h>
 #include "hwsecure.h"
-
 #include "imx-regs.h"
-#include "nxp_hwsecure_consts.h"
-#include "nxp_memmap_consts.h"
 
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM) || defined (MACH_IMX8MQ)
+#include <platform/imx_csu.h>
+#include "nxp_memmap_consts.h"
 #ifdef MACH_IMX8MP
 #include <imx_rdc.h>
 #endif
-
+#elif defined (MACH_IMX8ULP)
+#include <platform/imx_xrdc.h>
+#endif
 
 #define TLOG_TAG "hwsecure"
 
 extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
 
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM) || defined (MACH_IMX8MQ)
 static void *csu_base = NULL;
 static uint8_t* rdc_base = NULL;
 #ifdef MACH_IMX8MP
@@ -61,6 +63,7 @@ int init_rdc(void) {
 
     return 0;
 }
+#endif
 
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
 static int set_lcdif_secure_sa(uint32_t enable) {
@@ -105,7 +108,6 @@ static int set_dcss_secure_csl(uint32_t csl_val) {
     }
     return 0;
 }
-
 #endif
 
 int set_widevine_g2d_secure_mode(uint32_t cmd) {
@@ -174,6 +176,50 @@ int set_dcss_secure(uint32_t cmd) {
 
     return 0;
 
+}
+#elif defined(MACH_IMX8ULP)
+int set_dcnano_secure(uint32_t cmd) {
+    if (cmd == HWSECURE_DCNANO_SECURE_ACCESS) {
+        int ret = 0;
+        /* set DCnano can access secure memory as master */
+        struct xrdc_mda_config dcnano_mda = {13, 3, MDA_SA_S};
+        /* set DCnano can be read/write by Secure User/Priv
+         * but can only be read by Non-Secure User/Priv
+         */
+	struct xrdc_pac_msc_config dcnano_msc = { 2, 5, {0, 0, 0, 0, 0, 0, 5, 5} };
+
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MDA, &dcnano_mda);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MDA);
+            return ret;
+         }
+
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MSC, &dcnano_msc);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MSC);
+            return ret;
+         }
+
+    } else if (cmd == HWSECURE_DCNANO_NON_SECURE_ACCESS) {
+        int ret = 0;
+        /* set DCnano can only access normal memory as master */
+        struct xrdc_mda_config dcnano_mda = {13, 3, MDA_SA_NS};
+        /* set DCnano can be read/write by Secure/Non-secure User/Priv */
+        struct xrdc_pac_msc_config dcnano_msc = { 2, 5, {0, 0, 0, 0, 0, 0, 7, 7} };
+
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MDA, &dcnano_mda);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MDA);
+            return ret;
+         }
+
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MSC, &dcnano_msc);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MSC);
+            return ret;
+         }
+    }
+    return 0;
 }
 #endif
 

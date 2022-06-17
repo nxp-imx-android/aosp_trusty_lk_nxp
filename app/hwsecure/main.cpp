@@ -5,6 +5,7 @@
 #include <lk/err_ptr.h>
 #include "hwsecure_srv.h"
 #include "hwsecure.h"
+#include "imx-regs.h"
 
 #define TLOG_TAG "hwsecure"
 
@@ -15,10 +16,12 @@ int main(void) {
     struct tipc_hset *hset;
     TLOGE("hwsecure init.\n");
 
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MM) || defined (MACH_IMX8MQ)
     if(init_csu() || init_rdc()) {
         TLOGE("hardware error!\n");
         return -1;
     }
+#endif
 
     hset = tipc_hset_create();
 

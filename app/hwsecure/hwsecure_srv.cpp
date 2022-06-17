@@ -167,6 +167,16 @@ static int hwsecure_on_message(const struct tipc_port* port,
                 return ERR_GENERIC;
             }
             break;
+#elif defined(MACH_IMX8ULP)
+        case HWSECURE_DCNANO_SECURE_ACCESS:
+        case HWSECURE_DCNANO_NON_SECURE_ACCESS:
+             if (check_uuid_equal(&(ptr->peer), &secure_fb_impl_ta_uuid)) {
+                  return set_dcnano_secure(req.cmd);
+             } else {
+                  TLOGE("UUID doesn't match!\n");
+                  return ERR_GENERIC;
+             }
+             break;
 #endif
         case HWSECURE_WV_G2D_SECURE:
         case HWSECURE_WV_G2D_NON_SECURE:

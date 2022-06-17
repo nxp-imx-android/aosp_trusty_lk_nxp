@@ -1,0 +1,17 @@
+{
+    "uuid": "c52ae02f-fa45-4d8e-93e0-6b51cf7a923b",
+    "min_heap": 40960,
+    "min_stack": 4096,
+    "mem_map": [
+        {
+            "id": "CSU_MMIO_ID",
+            "addr": "CSU_BASE_ADDR",
+            "size": "CSU_REG_SIZE"
+        },
+        {
+            "id": "RDC_MMIO_ID",
+            "addr": "RDC_BASE_ADDR",
+            "size": "RDC_REG_SIZE"
+        }
+    ]
+}
