@@ -12,11 +12,10 @@
 #include <interface/hwsecure/hwsecure.h>
 #include "hwsecure.h"
 #include "imx-regs.h"
-
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM) || defined (MACH_IMX8MQ)
 #include <platform/imx_csu.h>
 #include "nxp_memmap_consts.h"
-#ifdef MACH_IMX8MP
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8MQ)
 #include <imx_rdc.h>
 #endif
 #elif defined (MACH_IMX8ULP)
@@ -33,12 +32,6 @@ static uint8_t* rdc_base = NULL;
 #ifdef MACH_IMX8MP
 static g2d_secure_mode current_g2d_secure_mode = NON_SECURE;
 #endif
-#define RDC_MDAn(n) (rdc_base + 0x200 + (n * 4))
-#define DID0 (0x0)
-#define DID1 (0x1)
-#define DID2 (0x2)
-#define DID3 (0x3)
-
 
 int init_csu(void) {
     csu_base = mmap(NULL, CSU_REG_SIZE, PROT_READ | PROT_WRITE,
@@ -107,6 +100,14 @@ static int set_dcss_secure_csl(uint32_t csl_val) {
         }
     }
     return 0;
+}
+
+static void init_rdc_mem_region(const struct imx_rdc_cfg *rdc_cfg, size_t count) {
+    for(size_t index = 0; index < count; index++) {
+        writel(rdc_cfg[index].setting.rdc_mem_region[0], MRSAn(rdc_cfg[index].index));
+        writel(rdc_cfg[index].setting.rdc_mem_region[1], MREAn(rdc_cfg[index].index));
+        writel(rdc_cfg[index].setting.rdc_mem_region[2], MRCn(rdc_cfg[index].index));
+    }
 }
 #endif
 
@@ -177,6 +178,18 @@ int set_dcss_secure(uint32_t cmd) {
     return 0;
 
 }
+
+int set_rdc_mem_region() {
+    struct imx_rdc_cfg rdc_cfg[] = {
+        RDC_MEM_REGIONn(1, 0x00000000, 0xA0000000, LCK|ENA|D3R|D3W|D2R|/*D2W|*/D1R|D1W|D0R|D0W),
+        RDC_MEM_REGIONn(2, 0xA0000000, 0xB8000000, LCK|ENA|D3R|D3W|D2R|D2W|D1R|D1W|/*D0R|*/D0W),
+        RDC_MEM_REGIONn(3, 0xB8000000, 0xFFFFFFFF, LCK|ENA|D3R|D3W|D2R|/*D2W|*/D1R|D1W|D0R|D0W),
+    };
+    size_t rdc_cfg_cnt = sizeof(rdc_cfg)/sizeof(rdc_cfg[0]);
+    init_rdc_mem_region(rdc_cfg, rdc_cfg_cnt);
+    return 0;
+}
+
 #elif defined(MACH_IMX8ULP)
 int set_dcnano_secure(uint32_t cmd) {
     if (cmd == HWSECURE_DCNANO_SECURE_ACCESS) {
@@ -186,7 +199,7 @@ int set_dcnano_secure(uint32_t cmd) {
         /* set DCnano can be read/write by Secure User/Priv
          * but can only be read by Non-Secure User/Priv
          */
-	struct xrdc_pac_msc_config dcnano_msc = { 2, 5, {0, 0, 0, 0, 0, 0, 5, 5} };
+        struct xrdc_pac_msc_config dcnano_msc = { 2, 5, {0, 0, 0, 0, 0, 0, 5, 5} };
 
         ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MDA, &dcnano_mda);
         if (ret) {

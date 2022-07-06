@@ -157,6 +157,14 @@ static int hwsecure_on_message(const struct tipc_port* port,
                   return ERR_GENERIC;
              }
              break;
+        case HWSECURE_SET_RDC_MEM_REGION:
+             if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
+                 return set_rdc_mem_region();
+             } else {
+                 TLOGE("UUID doesn't match!\n");
+                 return ERR_GENERIC;
+             }
+             break;
 #elif defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
         case HWSECURE_LCDIF_SECURE_ACCESS:
         case HWSECURE_LCDIF_NON_SECURE_ACCESS:
