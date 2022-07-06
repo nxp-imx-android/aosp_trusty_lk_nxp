@@ -148,3 +148,26 @@ int set_dcnano_secure_access(int enable) {
     close(chan);
     return rc;
 }
+
+int set_rdc_mem_region(void) {
+    handle_t chan;
+    int rc;
+
+    rc = tipc_connect(&chan, HWSECURE_PORT_NAME);
+    if (rc != NO_ERROR) {
+        TLOGE("failed to connect to TA %s\n", HWSECURE_PORT_NAME);
+        return rc;
+    }
+
+    struct hwsecure_req req;
+    req.cmd = HWSECURE_SET_RDC_MEM_REGION;
+
+    rc = tipc_send1(chan, &req, sizeof(req));
+
+    if (rc != (int)(sizeof(req))) {
+        TLOGE("failed to send message and rc=%d\n", rc);
+    }
+
+    close(chan);
+    return rc;
+}
