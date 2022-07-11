@@ -158,7 +158,8 @@ static int hwsecure_on_message(const struct tipc_port* port,
              }
              break;
         case HWSECURE_SET_RDC_MEM_REGION:
-             if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
+             if ((check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) ||
+                 (check_uuid_equal(&(ptr->peer), &confirmationui_ta_uuid))) {
                  return set_rdc_mem_region();
              } else {
                  TLOGE("UUID doesn't match!\n");
