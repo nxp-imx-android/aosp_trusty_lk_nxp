@@ -23,9 +23,10 @@
 #include <lk/err_ptr.h>
 #include <lk/macros.h>
 #include <lk/reg.h>
-#include <memref.h>
+#include <trusty/memref.h>
 #include <sys/auxv.h>
 #include <sys/mman.h>
+#include <trusty/sys/mman.h>
 #include <trusty_ipc.h>
 #include <trusty_log.h>
 #include <stdlib.h>
