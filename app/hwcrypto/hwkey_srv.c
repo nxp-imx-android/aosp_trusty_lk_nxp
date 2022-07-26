@@ -313,14 +313,14 @@ static int hwkey_handle_derive_key_cmd(struct hwkey_chan_ctx* ctx,
  * Handle Derive key cmd
  */
 static int hwkey_handle_mp_dec_cmd(struct hwkey_chan_ctx* ctx,
-                                       struct hwkey_msg* hdr,
+                                       struct hwkey_msg* msg,
                                        uint8_t* enc,
                                        size_t size) {
 
     int rc;
-    hdr->status = mp_dec(enc, size, key_data);
+    msg->header.status = mp_dec(enc, size, key_data);
 
-    rc = hwkey_send_rsp(ctx, hdr, key_data, size);
+    rc = hwkey_send_rsp(ctx, msg, key_data, size);
 
     return rc;
 }
@@ -355,7 +355,7 @@ static int hwkey_chan_handle_msg(struct hwkey_chan_ctx* ctx) {
         break;
 
     case HWKEY_MP_DEC:
-        rc = hwkey_handle_mp_dec_cmd(ctx, &hdr, req_data, req_data_len);
+        rc = hwkey_handle_mp_dec_cmd(ctx, &msg, req_data, req_data_len);
         memset(req_data, 0, req_data_len); /* sanitize request buffer */
         break;
 

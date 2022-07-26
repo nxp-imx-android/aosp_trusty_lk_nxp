@@ -17,7 +17,8 @@
 
 #include <stdio.h>
 #include <uapi/err.h>
-#include <sys/mman.h>
+#include <uapi/mm.h>
+#include <trusty/sys/mman.h>
 
 #include "caam.h"
 #include "common.h"

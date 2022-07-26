@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <stdarg.h>
+#include <uapi/mm.h>
 #include <interface/hwsecure/hwsecure.h>
 #include "hwsecure.h"
 #include "imx-regs.h"
