@@ -52,7 +52,12 @@ MODULE_LIBRARY_DEPS := \
 	trusty/user/base/interface/hwcrypto \
 	trusty/user/base/interface/hwaes \
 	trusty/user/base/lib/storage \
+	trusty/user/base/lib/tipc \
 	external/boringssl \
+
+TRUSTY_RUNNING_ROLLBACK_VERSION ?= 0
+MODULE_DEFINES := \
+        TRUSTY_RUNNING_ROLLBACK_VERSION=$(TRUSTY_RUNNING_ROLLBACK_VERSION)
 
 ifneq ($(APPLOADER_SIGN_PUBLIC_KEY_0_FILE),)
 MODULE_COMPILEFLAGS += \
