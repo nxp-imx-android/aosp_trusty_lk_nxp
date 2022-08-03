@@ -19,13 +19,11 @@
 #include <lk/compiler.h>
 #include <sys/types.h>
 #include <trusty_ipc.h>
+#include <lib/tipc/tipc.h>
 
 typedef void (*event_handler_proc_t)(const uevent_t* ev, void* ctx);
 
-typedef struct tipc_event_handler {
-    event_handler_proc_t proc;
-    void* priv;
-} tipc_event_handler_t;
+typedef struct tipc_event_handler  tipc_event_handler_t;
 
 __BEGIN_CDECLS
 
