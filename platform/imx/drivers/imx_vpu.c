@@ -40,7 +40,11 @@
 #define OPT_SECURE_PPCTRL_WRITE 0x5
 
 #define UNMAPPED_HEAP_ADDR   0xE0000000
+#if defined(MACH_IMX8MQ)
+#define UNMAPPED_HEAP_SIZE   0x18000000
+#else
 #define UNMAPPED_HEAP_SIZE   0x10000000
+#endif
 
 #define G2_SECURE_REGS_SIZE 5
 #define RDC_MDAn(n) (RDC_BASE_VIRT + 0x200 + (n * 4))
