@@ -16,6 +16,7 @@
 #pragma once
 
 #include <lk/compiler.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <interface/hwaes/hwaes.h>
 #include <interface/hwkey/hwkey.h>
@@ -97,6 +98,8 @@ void hwkey_init_srv_provider(void);
 void hwkey_install_keys(const struct hwkey_keyslot* keys, unsigned int kcnt);
 
 int hwkey_start_service(void);
+
+bool hwkey_client_allowed(const uuid_t* uuid);
 
 uint32_t derive_key_v1(const uuid_t* uuid,
                        const uint8_t* ikm_data,
