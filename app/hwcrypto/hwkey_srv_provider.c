@@ -69,8 +69,8 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 /*
  * KAK (Key Agreement Key)
  */
-#define KAK_KEY_SIZE 32
-#define KAK_KEY_ID "com.android.trusty.keymint.kak"
+#define KM_KAK_SIZE 32
+#define KM_KAK_ID "com.android.trusty.keymint.kak"
 
 /*
  *  RPMB Key support
@@ -508,17 +508,20 @@ static uint32_t get_huk_key(const struct hwkey_keyslot* slot,
         return HWKEY_ERR_GENERIC;
     }
 }
-/*
- * Return KAK as 0 because we don't support strongbox
- */
+
 static uint32_t get_kak_key(const struct hwkey_keyslot* slot,
                             uint8_t* kbuf,
                             size_t kbuf_len,
                             size_t* klen) {
-    assert(kbuf_len >= KAK_KEY_SIZE);
+    assert(kbuf);
+    assert(klen);
+    memset(kbuf, 0, KM_KAK_SIZE);
 
-    memset(kbuf, 0, KAK_KEY_SIZE);
-    *klen = KAK_KEY_SIZE;
+    if (kbuf_len < KM_KAK_SIZE) {
+        return HWKEY_ERR_BAD_LEN;
+    }
+    memcpy(kbuf, shared_key, KM_KAK_SIZE);
+    *klen = KM_KAK_SIZE;
 
     return HWKEY_NO_ERROR;
 }
@@ -710,7 +713,7 @@ static const struct hwkey_keyslot _keys[] = {
         },
         {
                 .uuid = &km_uuid,
-                .key_id = KAK_KEY_ID,
+                .key_id = KM_KAK_ID,
                 .handler = get_kak_key,
         },
         {
