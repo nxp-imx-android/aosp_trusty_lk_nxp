@@ -594,6 +594,12 @@ static void hwkey_port_handler(const uevent_t* ev, void* priv) {
         }
 
         handle_t chan = (handle_t)rc;
+        if (!hwkey_client_allowed(&peer_uuid)) {
+            TLOGE("access to hwkey service denied\n");
+            close(chan);
+            return;
+        }
+
         struct hwkey_chan_ctx* ctx = calloc(1, sizeof(*ctx));
         if (!ctx) {
             TLOGE("failed (%d) to allocate context on chan %d\n", rc, chan);
