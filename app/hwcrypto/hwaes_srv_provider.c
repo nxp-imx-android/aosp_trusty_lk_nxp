@@ -92,6 +92,29 @@ uint32_t hwaes_aes_op(const struct hwaes_aes_op_args* args) {
     }
 
     if (args->mode == HWAES_GCM_MODE) {
+        if (hwaes_check_arg_in(&args->iv) != HWAES_NO_ERROR) {
+            TLOGE("iv argument is missing\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
+        if (args->encrypt) {
+            if (hwaes_check_arg_in(&args->tag_in) == HWAES_NO_ERROR) {
+                TLOGE("Input authentication tag set while encrypting in GCM mode.\n");
+                return HWAES_ERR_INVALID_ARGS;
+            }
+            if (hwaes_check_arg_out(&args->tag_out) != HWAES_NO_ERROR) {
+                TLOGE("Missing output authentication tag in GCM mode.\n");
+                return HWAES_ERR_INVALID_ARGS;
+            }
+        } else {
+            if (hwaes_check_arg_in(&args->tag_in) != HWAES_NO_ERROR) {
+                TLOGE("Missing input authentication tag in GCM mode\n");
+                return HWAES_ERR_INVALID_ARGS;
+            }
+            if (hwaes_check_arg_out(&args->tag_out) == HWAES_NO_ERROR) {
+                TLOGE("Output authentication tag set while decrypting in GCM mode\n");
+                return HWAES_ERR_INVALID_ARGS;
+            }
+        }
         ret = caam_aes_gcm(args->encrypt, args->iv.data_ptr, args->iv.len, key.data_ptr,
                            key.len, args->aad.data_ptr, args->aad.len, args->text_in.data_ptr,
                            args->text_in.len, args->text_out.data_ptr, args->text_out.len,
@@ -102,6 +125,22 @@ uint32_t hwaes_aes_op(const struct hwaes_aes_op_args* args) {
             return HWAES_ERR_GENERIC;
         }
     } else if (args->mode == HWAES_CBC_MODE) {
+        if (hwaes_check_arg_in(&args->iv) != HWAES_NO_ERROR) {
+            TLOGE("iv argument is missing\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
+        if (hwaes_check_arg_in(&args->aad) == HWAES_NO_ERROR) {
+            TLOGE("AAD is not supported in CBC mode!\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
+        if (hwaes_check_arg_in(&args->tag_in) == HWAES_NO_ERROR) {
+            TLOGE("Authentication tag_in is not supported in CBC mode!\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
+        if (hwaes_check_arg_out(&args->tag_out) == HWAES_NO_ERROR) {
+            TLOGE("Authentication tag_out is not supported in CBC mode!\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
         ret = caam_aes_cbc(args->encrypt, args->iv.data_ptr, args->iv.len, key.data_ptr,
                            key.len, args->text_in.data_ptr, args->text_in.len,
                            args->text_out.data_ptr, args->text_out.len);
@@ -110,6 +149,10 @@ uint32_t hwaes_aes_op(const struct hwaes_aes_op_args* args) {
             return HWAES_ERR_GENERIC;
         }
     } else if (args->mode == HWAES_ECB_MODE){
+        if (hwaes_check_arg_in(&args->iv) != HWAES_NO_ERROR) {
+            TLOGE("iv argument is missing\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
         ret = caam_aes_ecb(args->encrypt, key.data_ptr, key.len, args->text_in.data_ptr,
                            args->text_in.len, args->text_out.data_ptr, args->text_out.len);
         if (ret) {
@@ -117,6 +160,10 @@ uint32_t hwaes_aes_op(const struct hwaes_aes_op_args* args) {
             return HWAES_ERR_GENERIC;
         }
     } else if (args->mode == HWAES_CTR_MODE){
+        if (hwaes_check_arg_in(&args->iv) != HWAES_NO_ERROR) {
+            TLOGE("iv argument is missing\n");
+            return HWAES_ERR_INVALID_ARGS;
+        }
         ret = caam_aes_ctr(args->encrypt, args->iv.data_ptr, args->iv.len, key.data_ptr,
                            key.len, args->text_in.data_ptr, args->text_in.len,
                            args->text_out.data_ptr, args->text_out.len);
