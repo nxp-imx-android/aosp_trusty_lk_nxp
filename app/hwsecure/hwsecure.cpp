@@ -184,7 +184,7 @@ int set_dcss_secure(uint32_t cmd) {
 int set_rdc_mem_region() {
     struct imx_rdc_cfg rdc_cfg[] = {
         RDC_MEM_REGIONn(1, 0x00000000, 0xA0000000, LCK|ENA|D3R|D3W|D2R|/*D2W|*/D1R|D1W|D0R|D0W),
-        RDC_MEM_REGIONn(2, 0xA0000000, 0xB8000000, LCK|ENA|D3R|D3W|D2R|D2W|D1R|D1W|/*D0R|*/D0W),
+        RDC_MEM_REGIONn(2, 0xA0000000, 0xBA800000, LCK|ENA|D3R|D3W|D2R|D2W|D1R|D1W|/*D0R|*/D0W),
         RDC_MEM_REGIONn(3, 0xB8000000, 0xFFFFFFFF, LCK|ENA|D3R|D3W|D2R|/*D2W|*/D1R|D1W|D0R|D0W),
     };
     size_t rdc_cfg_cnt = sizeof(rdc_cfg)/sizeof(rdc_cfg[0]);
