@@ -38,12 +38,12 @@ const static struct uuid secure_fb_impl_ta_uuid = {
     {0xae, 0x97, 0x0f, 0x25, 0xaa, 0xa2, 0x04, 0xe4},
 };
 
-// deb09cd6-7d65-4374-8e3a-63955a27279e
-const static struct uuid hwoemcrypto_ta_uuid = {
-    0xdeb09cd6,
-    0x7d65,
-    0x4374,
-    {0x8e, 0x3a, 0x63, 0x95, 0x5a, 0x27, 0x27, 0x9e},
+// 9c0e58c8-1465-4649-a147-55deb3366205
+const static struct uuid hwsecure_client_ta_uuid = {
+    0x9c0e58c8,
+    0x1465,
+    0x4649,
+    {0xa1, 0x47, 0x55, 0xde, 0xb3, 0x36, 0x62, 0x05},
 };
 
 // 7dee2364-c036-425b-b086-df0f6c233c1b
@@ -61,7 +61,7 @@ static bool check_uuid_equal(const struct uuid* a, const struct uuid* b) {
 
 static const struct uuid *allow_uuids[] = {
     &secure_fb_impl_ta_uuid,
-    &hwoemcrypto_ta_uuid,
+    &hwsecure_client_ta_uuid,
     &confirmationui_ta_uuid,
 };
 
@@ -158,7 +158,7 @@ static int hwsecure_on_message(const struct tipc_port* port,
              }
              break;
         case HWSECURE_SET_RDC_MEM_REGION:
-             if ((check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) ||
+             if ((check_uuid_equal(&(ptr->peer), &hwsecure_client_ta_uuid)) ||
                  (check_uuid_equal(&(ptr->peer), &confirmationui_ta_uuid))) {
                  return set_rdc_mem_region();
              } else {
@@ -189,14 +189,14 @@ static int hwsecure_on_message(const struct tipc_port* port,
 #endif
         case HWSECURE_WV_G2D_SECURE:
         case HWSECURE_WV_G2D_NON_SECURE:
-                if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
+                if (check_uuid_equal(&(ptr->peer), &hwsecure_client_ta_uuid)) {
                     return set_widevine_g2d_secure_mode(req.cmd);
                 } else {
                     TLOGE("UUID doesn't match!\n");
                     return ERR_GENERIC;
                 }
         case HWSECURE_WV_GET_G2D_SECURE_MODE:
-                if (check_uuid_equal(&(ptr->peer), &hwoemcrypto_ta_uuid)) {
+                if (check_uuid_equal(&(ptr->peer), &hwsecure_client_ta_uuid)) {
                     int mode;
                     int rc = get_widevine_g2d_secure_mode(mode);
                     if (rc == 0) {
