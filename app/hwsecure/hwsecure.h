@@ -22,10 +22,14 @@ int set_widevine_g2d_secure_mode(uint32_t cmd);
 
 int get_widevine_g2d_secure_mode(int &mode);
 
+int get_ime_secure_mode(int &mode);
+
 int set_dcss_secure(uint32_t cmd);
 
 /* Configure xRDC for DCnano policy */
 int set_dcnano_secure(uint32_t cmd);
+
+int set_ime_secure(uint32_t cmd, handle_t chan);
 
 /* Configre RDC memory orgion */
 int set_rdc_mem_region();
@@ -69,6 +73,5 @@ struct imx_rdc_cfg {
           .setting.rdc_mem_region[1] = (mea),   \
           .setting.rdc_mem_region[2] = (mrc),   \
         }
-
 
 __END_CDECLS

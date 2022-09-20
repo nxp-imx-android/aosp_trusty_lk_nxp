@@ -27,12 +27,13 @@
 
 extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
 
+#if defined(MACH_IMX8MP) || defined(MACH_IMX8ULP)
+static g2d_secure_mode secure_mode = NON_SECURE;
+#endif
+
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM) || defined (MACH_IMX8MQ)
 static void *csu_base = NULL;
 static uint8_t* rdc_base = NULL;
-#ifdef MACH_IMX8MP
-static g2d_secure_mode current_g2d_secure_mode = NON_SECURE;
-#endif
 
 int init_csu(void) {
     csu_base = mmap(NULL, CSU_REG_SIZE, PROT_READ | PROT_WRITE,
@@ -117,10 +118,10 @@ int set_widevine_g2d_secure_mode(uint32_t cmd) {
 #ifdef MACH_IMX8MP
     if (cmd == HWSECURE_WV_G2D_SECURE) {
         writel(DID2, RDC_MDAn(RDC_MDA_GPU2D));
-        current_g2d_secure_mode = SECURE;
+        secure_mode = SECURE;
     } else if (cmd == HWSECURE_WV_G2D_NON_SECURE) {
         writel(DID0, RDC_MDAn(RDC_MDA_GPU2D));
-        current_g2d_secure_mode = NON_SECURE;
+        secure_mode = NON_SECURE;
     } else {
         return ERR_INVALID_ARGS;
     }
@@ -133,7 +134,7 @@ int set_widevine_g2d_secure_mode(uint32_t cmd) {
 
 int get_widevine_g2d_secure_mode(int &mode) {
 #ifdef MACH_IMX8MP
-    mode =(int)current_g2d_secure_mode;
+    mode =(int)secure_mode;
     return 0;
 #else
     return ERR_GENERIC;
@@ -235,5 +236,63 @@ int set_dcnano_secure(uint32_t cmd) {
     }
     return 0;
 }
-#endif
 
+int set_ime_secure(uint32_t cmd, handle_t chan) {
+    int ret = 0;
+    struct hwsecure_resp resp;
+
+    if (cmd == HWSECURE_IME_SECURE_ACCESS) {
+        struct xrdc_mda_config g2d_mda = {11, 3, MDA_SA_S};
+
+        /* set G2D as secure master */
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MDA, &g2d_mda);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MDA);
+            goto exit;
+        }
+
+        /* set DCnano policy */
+        ret = set_dcnano_secure(HWSECURE_DCNANO_SECURE_ACCESS);
+        if (ret) {
+            TLOGE("DCnano secure policy set failed!\n");
+            goto exit;
+        }
+
+        secure_mode = SECURE;
+    } else if (cmd == HWSECURE_IME_NON_SECURE_ACCESS) {
+        struct xrdc_mda_config g2d_mda = {11, 3, MDA_SA_NS};
+
+        /* set G2D as non-secure master */
+        ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_XRDC, XRDC_IOCMD_CFG_MDA, &g2d_mda);
+        if (ret) {
+            TLOGE("xrdc ioctl failed. cmd=%d\n", XRDC_IOCMD_CFG_MDA);
+            return ret;
+        }
+
+        /* set DCnano policy */
+        ret = set_dcnano_secure(HWSECURE_DCNANO_NON_SECURE_ACCESS);
+        if (ret) {
+            TLOGE("DCnano secure policy set failed!\n");
+            goto exit;
+        }
+
+        secure_mode = NON_SECURE;
+    } else {
+        TLOGE("invalid cmd=%d!\n", XRDC_IOCMD_CFG_MRC);
+        ret = ERR_INVALID_ARGS;
+    }
+
+exit:
+    /* send response */
+    resp.cmd = (cmd | HWSECURE_RESP_BIT);
+    resp.status = ret;
+    ret = tipc_send1(chan, &resp, sizeof(resp));
+
+    return ret;
+}
+
+int get_ime_secure_mode(int &mode) {
+    mode = (int)secure_mode;
+    return 0;
+}
+#endif
