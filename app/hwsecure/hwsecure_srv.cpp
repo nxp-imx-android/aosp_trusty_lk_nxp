@@ -186,6 +186,28 @@ static int hwsecure_on_message(const struct tipc_port* port,
                   return ERR_GENERIC;
              }
              break;
+        case HWSECURE_IME_SECURE_ACCESS:
+        case HWSECURE_IME_NON_SECURE_ACCESS:
+             if (check_uuid_equal(&(ptr->peer), &hwsecure_client_ta_uuid)) {
+                  return set_ime_secure(req.cmd, chan);
+             } else {
+                  TLOGE("UUID doesn't match!\n");
+                  return ERR_GENERIC;
+             }
+             break;
+        case HWSECURE_IME_GET_SECURE_MODE:
+             if (check_uuid_equal(&(ptr->peer), &hwsecure_client_ta_uuid)) {
+                  int mode;
+                  int rc = get_ime_secure_mode(mode);
+                  if (rc == 0) {
+                      rc = tipc_send1(chan, &mode, sizeof(mode));
+                  }
+                  return rc;
+             } else {
+                  TLOGE("UUID doesn't match!\n");
+                  return ERR_GENERIC;
+             }
+             break;
 #endif
         case HWSECURE_WV_G2D_SECURE:
         case HWSECURE_WV_G2D_NON_SECURE:
