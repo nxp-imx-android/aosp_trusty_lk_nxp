@@ -546,7 +546,7 @@ static uint32_t get_wv_key(const struct hwkey_keyslot* slot,
     }
 
     /* open file in secure storage */
-    rc = storage_open_file(session, &file_handle, WvKeyBoxFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    rc = storage_open_file(session, &file_handle, WvKeyBoxFilename, 0, 0);
     if (rc < 0) {
         TLOGE("hwkey: failed to open keybox!\n");
         storage_close_session(session);
