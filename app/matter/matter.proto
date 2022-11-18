@@ -1,0 +1,12 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
+syntax = "proto2";
+
+import "nanopb.proto";
+
+message MatterCert {
+  optional bytes cert = 1 [(nanopb).max_size=2048];
+};
