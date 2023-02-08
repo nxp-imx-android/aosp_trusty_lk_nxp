@@ -108,6 +108,13 @@ static uint8_t* sram_base;
 #define CAAM_IRRIR2 (0x305c + caam_base)
 #define CAAM_ORWIR2 (0x3064 + caam_base)
 #define CAAM_JRCR2 (0x306c + caam_base)
+#define CAAM_P0SMAPR2 (0x3a04 + caam_base)
+#define CAAM_P0SMAG2_JR2 (0x3a08 + caam_base)
+#define CAAM_P0SMAG1_JR2 (0x3a0c + caam_base)
+#define CAAM_SMCR2       (0x3be4 + caam_base)
+#define CAAM_SMCSR2      (0x3bec + caam_base)
+#define CAAM_SMPO2 (0x3fbc + caam_base)
+#define CAAM_FADR2 (0x3fcc + caam_base)
 #if 0
 #define CAAM_SMAPJR0(y) (CAAM_BASE_ADDR + 0x1104 + y * 16)
 #define CAAM_SMAG2JR0(y) (CAAM_BASE_ADDR + 0x1108 + y * 16)
@@ -145,7 +152,70 @@ static uint8_t* sram_base;
 #define CAAM_IRJAR CAAM_IRJAR2
 #define CAAM_ORSFR CAAM_ORSFR2
 #define CAAM_ORJRR CAAM_ORJRR2
+#define CAAM_SMPO  CAAM_SMPO2
+#define CAAM_SMAPR CAAM_P0SMAPR2
+#define CAAM_SMAG2 CAAM_P0SMAG2_JR2
+#define CAAM_SMAG1 CAAM_P0SMAG1_JR2
+#define CAAM_SMCR  CAAM_SMCR2
+#define CAAM_SMCSR CAAM_SMCSR2
+#define CAAM_FADR  CAAM_FADR2
 #endif
+
+/* Partition Owners */
+#define SMPO_PART(prtn)              ((prtn) * 2)
+#define SMPO_OWNER(val, prtn)        (((val) >> SMPO_PART(prtn)) & 0x3)
+#define SMPO_PO_AVAIL                0x0
+#define SMPO_PO_OWNED                0x3
+
+/* Access Permission */
+#define SMAPR(prtn)                  (CAAM_SMAPR + (prtn) * 16)
+#define SMAPR_GRP1(perm)             ((perm) & 0xF)
+#define SMAPR_GRP2(perm)             (((perm) & 0xF) << 4)
+#define SMAPR_CSP                    (0x1 << 15)
+#define SMAPR_SMAP_LCK               (0x1 << 13)
+#define SMAPR_SMAG_LCK               (0x1 << 12)
+
+/* Access Group */
+#define SMAG2(prtn)                  (CAAM_SMAG2 + (prtn) * 16)
+#define SMAG1(prtn)                  (CAAM_SMAG1 + (prtn) * 16)
+
+/* Command */
+#define SMCR_PAGE(page)              (((page) & UINT16_MAX) << 16)
+#define SMCR_PRTN(prtn)              (((prtn) & 0xF) << 8)
+#define SMCR_CMD(cmd)                (((cmd) & 0xF) << 0)
+#define SMCR_PAGE_ALLOC              0x1
+#define SMCR_PAGE_DEALLOC            0x2
+#define SMCR_PARTITION_DEALLOC       0x3
+#define SMCR_PAGE_INQ                0x5
+
+/* Command Status */
+#define SMCSR_CERR(val)              (((val) >> 14) & 0x3)
+#define SMCSR_CERR_NO_ERROR          0x0
+#define SMCSR_CERR_NOT_COMPLETED     0x1
+#define SMCSR_AERR(val)              (((val) >> 12) & 0x3)
+#define SMCSR_AERR_NO_ERROR          0x0
+#define SMCSR_PO(val)                (((val) >> 6) & 0x3)
+#define SMCSR_PO_AVAILABLE           0x0
+#define SMCSR_PO_UNKNOWN             0x1
+#define SMCSR_PO_OWNED_BY_OTHER      0x2
+#define SMCSR_PO_OWNED               0x3
+#define SMCSR_PRTN(val)              ((val) & 0x3)
+
+/*
+ * HAB Blob header values
+ */
+#define HAB_HDR_TAG             0x81
+#define HAB_HDR_V4              0x43
+#define HAB_HDR_MODE_CCM        0x66
+#define HAB_HDR_ALG_AES         0x55
+
+/*
+ * Secure Memory Access Permission allowed
+ */
+#define GRP_READ     (0x1) /* Read allowed */
+#define GRP_WRITE    (0x1 << 1) /* Write allowed */
+#define GRP_TDO      (0x1 << 2) /* Trusted Descriptor override allowed */
+#define GRP_BLOB     (0x1 << 3) /* Export/Import Secure Memory blobs allowed */
 
 #define JRCFG_LS_IMSK 0x00000001
 #define JR_MID 2
@@ -219,6 +289,7 @@ static uint8_t* sram_base;
 #define MAX_DSC_NUM 64UL
 
 #define CAAM_KB_HEADER_LEN 48
+#define HAB_DEK_BLOB_HEADER_LEN 8
 #define CAAM_SUCCESS 0
 #define CAAM_FAILURE 1
 
