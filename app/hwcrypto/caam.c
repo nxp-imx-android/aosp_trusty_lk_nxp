@@ -159,6 +159,33 @@ static const uint32_t des_decriptor_template_ede_cbc[] = {
   /* 11 */ 0x00000000, /* place: iv address */
 };
 
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+/* DEK BLOB */
+static const uint32_t decriptor_template_gen_dek_blob [] = {
+  /* 00 */ HEADER_COMMAND, /* HEADER */
+  /* 01 */ 0x14C00C08, /* Key Modifier load, 8 bytes */
+  /* 02 */ 0x00005566, /* Key Modifier 1 - | Length of the payload | AES - 0x55 | CCM - 0x66 | */
+  /* 03 */ 0x00000000, /* Key Modifier 2 - | 0 |*/
+  /* 04 */ 0xF0000000, /* CMD_SEQ_IN_TYPE | SEQ_LENGTH(len) */
+  /* 05 */ 0x00000000, /* Input physical address */
+  /* 06 */ 0xF8000000, /* CMD_SEQ_OUT_TYPE | SEQ_LENGTH(len) */
+  /* 07 */ 0x00000000, /* Output physical address */
+  /* 08 */ 0x870D0008, /* BLOB_ENCAPS | PROT_BLOB_SEC_MEM */
+};
+
+static const uint32_t decriptor_template_decap_dek_blob [] = {
+  /* 00 */ HEADER_COMMAND, /* HEADER */
+  /* 01 */ 0x14C00C08, /* Key Modifier load, 8 bytes */
+  /* 02 */ 0x00005566, /* Key Modifier 1 - | Length of the payload | AES - 0x55 | CCM - 0x66 | */
+  /* 03 */ 0x00000000, /* Key Modifier 2 - | 0 |*/
+  /* 04 */ 0xF0000000, /* CMD_SEQ_IN_TYPE | SEQ_LENGTH(len) */
+  /* 05 */ 0x00000000, /* Input physical address */
+  /* 06 */ 0xF8000000, /* CMD_SEQ_OUT_TYPE | SEQ_LENGTH(len) */
+  /* 07 */ 0x00000000, /* Output physical address */
+  /* 08 */ 0x860D0008, /* BLOB_DECAPS | PROT_BLOB_SEC_MEM */
+};
+#endif
+
 static bool cipher_arg_is_valid(size_t len, const uint8_t* data_ptr) {
     if (len == 0 || data_ptr == NULL) {
         return false;
@@ -331,6 +358,12 @@ void run_job(struct caam_job* job) {
 
     /* get clock */
     caam_clk_get();
+
+#ifdef DUMP_DESCRIPTOR
+    uint32_t *tmp = job->dsc;
+    for (uint32_t i = 0; i < job->dsc_used; i++)
+        TLOGE("\nDESC[%d]: (0x%08x)\n", i, tmp[i]);
+#endif
 
     /* start job */
     writel(1, CAAM_IRJAR);
@@ -638,6 +671,303 @@ uint32_t caam_gen_blob(const uint8_t* kmod,
     finish_dma(blob, size + CAAM_KB_HEADER_LEN, DMA_FLAG_FROM_DEVICE);
     return CAAM_SUCCESS;
 }
+
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+static uint32_t issue_cmd(unsigned int page, unsigned int partition, unsigned int cmd) {
+    unsigned int status = 0;
+    uint32_t timeout = 10000000;
+
+    /* Send cmd */
+    writel(SMCR_PAGE(page) | SMCR_PRTN(partition) | SMCR_CMD(cmd), CAAM_SMCR);
+
+    /* wait the command to complete */
+    do {
+        status = readl(CAAM_SMCSR);
+    } while ((SMCSR_CERR(status) == SMCSR_CERR_NOT_COMPLETED) && (--timeout));
+
+    if (!timeout)
+        TLOGE("timeout when waiting for SMCSR status(%d)!\n", status);
+
+    return status;
+}
+
+static uint32_t sm_deallocate_pages(uint32_t partition, uint32_t page, uint32_t nb_page)
+{
+    uint32_t status = 0;
+    uint32_t page_t;
+
+    for (page_t = page; page_t < page + nb_page; page_t++) {
+        /* De-Allocate page - partition not used */
+        status = issue_cmd(page_t, 0, SMCR_PAGE_DEALLOC);
+        if (SMCSR_AERR(status) != SMCSR_AERR_NO_ERROR) {
+            TLOGE("Failed to free pages!\n");
+            return CAAM_FAILURE;
+        }
+    }
+
+    return CAAM_SUCCESS;
+}
+
+static uint32_t sm_deallocate_partition(uint32_t partition) {
+    uint32_t status = 0;
+
+    if (SMPO_OWNER(readl(CAAM_SMPO), partition) != SMPO_PO_OWNED) {
+        TLOGE("The partition is not owned by used JR!\n");
+        return CAAM_FAILURE;
+    }
+
+    status = issue_cmd(0, partition, SMCR_PARTITION_DEALLOC);
+    if (SMCSR_AERR(status) != SMCSR_AERR_NO_ERROR) {
+        TLOGE("Free partition failed!\n");
+        return CAAM_FAILURE;
+    }
+
+    return CAAM_SUCCESS;
+}
+
+static uint32_t sm_alloc_pages(uint32_t partition, uint32_t page, uint32_t nb_page) {
+    unsigned int status = 0;
+    unsigned int page_t;
+
+    /* make sure the partition is free */
+    if (SMPO_OWNER(readl(CAAM_SMPO), partition) != SMPO_PO_AVAIL) {
+        TLOGE("partition is not free!\n");
+        return CAAM_FAILURE;
+    }
+    /* enable all Secure Memory permission to all groups */
+    writel(SMAPR_GRP1(UINT8_MAX) | SMAPR_GRP2(UINT8_MAX), SMAPR(partition));
+    writel(UINT32_MAX, SMAG2(partition));
+    writel(UINT32_MAX, SMAG1(partition));
+
+    /* allocate page */
+    for (page_t = page; page_t < page + nb_page; page_t++) {
+        /* first we check if all pages are available */
+        status = issue_cmd(page_t, 0, SMCR_PAGE_INQ);
+        if (SMCSR_PO(status) != SMCSR_PO_AVAILABLE) {
+            TLOGE("Not all pages are free!\n");
+            return CAAM_FAILURE;
+        }
+    }
+
+    for (page_t = page; page_t < page + nb_page; page_t++) {
+        /* Allocate page to partition */
+        status = issue_cmd(page_t, partition, SMCR_PAGE_ALLOC);
+        if (SMCSR_AERR(status) != SMCSR_AERR_NO_ERROR) {
+            TLOGE("Allocate pages failed!\n");
+            return CAAM_FAILURE;
+        }
+    }
+
+    for (page_t = page; page_t < page + nb_page; page_t++) {
+        /* Check if the page is available, else return on error */
+        status = issue_cmd(page_t, 0, SMCR_PAGE_INQ);
+        if (SMCSR_PO(status) != SMCSR_PO_OWNED ||
+            SMCSR_PRTN(status) != partition) {
+            TLOGE("Check pages status failed!\n");
+            return CAAM_FAILURE;
+        }
+    }
+
+    return CAAM_SUCCESS;
+}
+
+static uint32_t sm_set_access_perm(uint32_t partition) {
+    /* make sure we owned the partition */
+    if (SMPO_OWNER(readl(CAAM_SMPO), partition) != SMPO_PO_OWNED) {
+        TLOGE("The partition is not owned by used JR!\n");
+        return CAAM_FAILURE;
+    }
+
+    /* set the secure group 1 secure memory permission */
+    writel((0x1 << 1), SMAG1(partition));
+    writel(0, SMAG2(partition));
+    writel((SMAPR_GRP1(GRP_BLOB) | SMAPR_GRP2(0) | SMAPR_CSP |
+            SMAPR_SMAP_LCK | SMAPR_SMAG_LCK), SMAPR(partition));
+
+    return CAAM_SUCCESS;
+}
+
+uint32_t caam_gen_dek_blob(uint8_t *dek, uint32_t dek_size, uint8_t *dek_blob) {
+    uint32_t *descriptor = g_job->dsc;
+    /* we use partition 1, page 3 in secure memory to align with ROM */
+    uint32_t partition = 1, page = 3, nb_page = 1;
+    struct dma_pmem pmem_dek, pmem_blob;
+    struct hab_dek_blob_header *hdr = NULL;
+    uint32_t blob_size = 0;
+    void *tmp_blob = NULL;
+    uint32_t ret = CAAM_FAILURE;
+
+    if (!dek || !dek_size || !dek_blob) {
+        TLOGE("Wrong input parameter!\n");
+        return CAAM_FAILURE;
+    }
+
+    if ((dek_size != 16) && (dek_size != 24) && (dek_size != 32)) {
+        TLOGE("Unsupported DEK size!\n");
+        return CAAM_FAILURE;
+    }
+
+    if (sm_alloc_pages(partition, page, nb_page) != CAAM_SUCCESS)
+        return CAAM_FAILURE;
+
+    /* copy the dek to secure memory and flush cache */
+    memcpy((void *)SEC_MEM_PAGE3, dek, dek_size);
+    ret = prepare_dma((void *)SEC_MEM_PAGE3, ALIGN(dek_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE, &pmem_dek);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+
+    sm_set_access_perm(partition);
+
+    /* allocate cache aligned buffer for output buffer */
+    blob_size = dek_size + CAAM_KB_HEADER_LEN;
+    tmp_blob = memalign(CACHE_ALIGN, blob_size);
+    if (!tmp_blob) {
+        TLOGE("failed to allocate blob memory!\n");
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+    memset(tmp_blob, 0, blob_size);
+    ret = prepare_dma(tmp_blob, ALIGN(blob_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE, &pmem_blob);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+
+    /* construct the descriptors */
+    memcpy(descriptor, decriptor_template_gen_dek_blob, sizeof(decriptor_template_gen_dek_blob));
+    HEADER_SET_DESC_LEN(descriptor[0], 9);
+    descriptor[2] |= (((dek_size) & (0xFFFF)) << 16);
+    descriptor[4] |= ((dek_size) & (0xFFFF));
+    descriptor[5] = (uint32_t)(unsigned long)(pmem_dek.paddr);
+    descriptor[6] |= ((blob_size) & (0xFFFF));
+    descriptor[7] = pmem_blob.paddr;
+
+    /* schedule the job */
+    g_job->dsc_used = 9;
+    run_job(g_job);
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x)\n", g_job->status);
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+    finish_dma(tmp_blob, ALIGN(blob_size, CACHE_ALIGN), DMA_FLAG_FROM_DEVICE);
+
+    /* construct the header */
+    hdr = (struct hab_dek_blob_header *)dek_blob;
+    hdr->tag = HAB_HDR_TAG;
+    hdr->len_msb = 0x00;
+    hdr->len_lsb = blob_size + sizeof(*hdr);
+    hdr->par = HAB_HDR_V4;
+    hdr->mode = HAB_HDR_MODE_CCM;
+    hdr->alg = HAB_HDR_ALG_AES;
+    hdr->size = dek_size;
+    hdr->flg = 0x00;
+
+    memcpy(dek_blob + sizeof(struct hab_dek_blob_header), tmp_blob, blob_size);
+
+    ret = CAAM_SUCCESS;
+exit:
+    if (tmp_blob != NULL)
+        free(tmp_blob);
+
+    /* free pags and partition */
+    sm_deallocate_pages(partition, page, nb_page);
+    sm_deallocate_partition(partition);
+
+    return ret;
+}
+
+uint32_t caam_decap_dek_blob(uint8_t *dek_blob, uint32_t dek_blob_size, uint8_t *dek) {
+    uint32_t *descriptor = g_job->dsc;
+    /* we use partition 1, page 3 in secure memory to align with ROM */
+    uint32_t partition = 1, page = 3, nb_page = 1;
+    struct dma_pmem pmem_dek, pmem_blob;
+    uint32_t blob_size = 0, dek_size = 0;
+    void *tmp_blob = NULL;
+    uint32_t ret = CAAM_FAILURE;
+
+    if (!dek_blob || !dek_blob_size || !dek) {
+        TLOGE("Wrong input parameter!\n");
+        return CAAM_FAILURE;
+    }
+
+    if ((dek_blob_size != 72) && (dek_blob_size != 80) && (dek_blob_size != 88)) {
+        TLOGE("Unsupported DEK BLOBsize!\n");
+        return CAAM_FAILURE;
+    }
+
+    if (sm_alloc_pages(partition, page, nb_page) != CAAM_SUCCESS)
+        return CAAM_FAILURE;
+
+    /* allocate cache aligned buffer for input buffer */
+    blob_size = dek_blob_size - sizeof(struct hab_dek_blob_header);
+    tmp_blob = memalign(CACHE_ALIGN, blob_size);
+    if (!tmp_blob) {
+        TLOGE("failed to allocate dek blob memory!\n");
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+    memcpy(tmp_blob, dek_blob + sizeof(struct hab_dek_blob_header), blob_size);
+    ret = prepare_dma((void *)tmp_blob, ALIGN(blob_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE, &pmem_blob);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+
+    /* the dek should be in secure memory */
+    dek_size = blob_size - CAAM_KB_HEADER_LEN;
+    memset((void *)SEC_MEM_PAGE3, 0, dek_size);
+    ret = prepare_dma((void *)SEC_MEM_PAGE3, ALIGN(dek_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE, &pmem_dek);
+    if (ret != 1) {
+        TLOGE("failed (%d) to prepare dma buffer\n", ret);
+        ret = CAAM_FAILURE;
+        goto exit;
+    }
+
+    sm_set_access_perm(partition);
+
+    /* construct the descriptors */
+    memcpy(descriptor, decriptor_template_decap_dek_blob, sizeof(decriptor_template_decap_dek_blob));
+    HEADER_SET_DESC_LEN(descriptor[0], 9);
+    descriptor[2] |= (((dek_size) & (0xFFFF)) << 16);
+    descriptor[4] |= ((blob_size) & (0xFFFF));
+    descriptor[5] = (uint32_t)(unsigned long)(pmem_blob.paddr);
+    descriptor[6] |= ((dek_size) & (0xFFFF));
+    descriptor[7] = pmem_dek.paddr;
+
+    /* schedule the job */
+    g_job->dsc_used = 9;
+    run_job(g_job);
+    if (g_job->status & JOB_RING_STS) {
+        TLOGE("job failed (0x%08x), FADR (0x%08x)\n", g_job->status, readl(CAAM_FADR));
+        ret = CAAM_FAILURE;
+        goto exit;
+    } else {
+        TLOGE("dek blob decap succeed!\n");
+    }
+
+    ret = CAAM_SUCCESS;
+exit:
+    if (tmp_blob != NULL)
+        free(tmp_blob);
+
+    /* free pags and partition */
+    sm_deallocate_pages(partition, page, nb_page);
+    sm_deallocate_partition(partition);
+
+    return ret;
+}
+#else
+uint32_t caam_gen_dek_blob(uint8_t *dek, uint32_t dek_size, uint8_t *dek_blob) {
+    TLOGE("DEK BLOB generation is not supported on this platform!\n");
+    return CAAM_FAILURE;
+}
+#endif
 
 uint32_t caam_aes_op(const uint8_t* key,
                      size_t key_size,
@@ -2097,6 +2427,31 @@ static void caam_blob_test(void) {
         TLOGE("caam blob test PASS!!!\n");
 }
 
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+/*
+ * DEK BLOB
+ */
+static void caam_dek_blob_test(void) {
+    uint i = 0;
+    DECLARE_SG_SAFE_BUF(dek, 16);
+    DECLARE_SG_SAFE_BUF(blob, 128);
+
+    /* build known input */
+    for (i = 0; i < sizeof(dek); i++) {
+        dek[i] = i + '0';
+    }
+
+    /* encap dek blob */
+    caam_gen_dek_blob(dek, 16, blob);
+
+    /* decap dek blob */
+    if (caam_decap_dek_blob(blob, 72, dek)) {
+        TLOGE("caam dek blob test FAILED!!!\n");
+    } else
+        TLOGE("caam dek blob test PASS!!!\n");
+}
+#endif
+
 /*
  *  AES
  */
@@ -2529,6 +2884,9 @@ void caam_tdes_cbc_test(void) {
 void caam_test(void) {
     caam_hwrng_test();
     caam_blob_test();
+#if defined(MACH_IMX8MQ) || defined(MACH_IMX8MM) || defined(MACH_IMX8MP)
+    caam_dek_blob_test();
+#endif
     caam_kdfv1_root_key_test();
     caam_aes_test();
     caam_hash_test();
