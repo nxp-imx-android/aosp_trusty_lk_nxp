@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #include <lib/tipc/tipc.h>
 #include <lib/syscall.h>
 #include <trusty_ipc.h>

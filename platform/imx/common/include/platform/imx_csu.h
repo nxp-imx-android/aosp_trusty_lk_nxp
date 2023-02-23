@@ -1,3 +1,7 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
 
 #ifndef _CSU_COMMON_H_
 #define _CSU_COMMON_H_

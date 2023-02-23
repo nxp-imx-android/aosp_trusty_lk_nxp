@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #pragma once
 
 #include <lk/compiler.h>

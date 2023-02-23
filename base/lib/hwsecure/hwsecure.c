@@ -1,3 +1,7 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
 
 #define TLOG_TAG "secure_fb_ipc"
 
