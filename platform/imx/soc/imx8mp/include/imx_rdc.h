@@ -1,3 +1,7 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
 
 #ifndef _IMX_RDC_H
 #define _IMX_RDC_H

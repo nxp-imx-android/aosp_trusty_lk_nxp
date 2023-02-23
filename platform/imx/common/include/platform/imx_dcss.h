@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #ifndef __IMX_DCSS_H__
 #define __IMX_DCSS_H__
 

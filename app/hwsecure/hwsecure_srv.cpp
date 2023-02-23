@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #include <interface/hwsecure/hwsecure.h>
 #include <lib/tipc/tipc.h>
 #include <trusty_ipc.h>

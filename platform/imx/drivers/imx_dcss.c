@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #include <debug.h>
 #include <err.h>
 #include <kernel/vm.h>

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #ifndef __HWSECURE_SRV_H__
 #define __HWSECURE_SRV_H__
 

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2023 NXP
+ *
+ */
+
 #include <dev/uart.h>
 #include <kernel/thread.h>
 #include <platform/debug.h>
