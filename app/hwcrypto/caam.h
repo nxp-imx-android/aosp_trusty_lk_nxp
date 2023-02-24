@@ -67,6 +67,17 @@ typedef enum _caam_sgt_entry_type
     caam_sgt_entry_last = 1,    /* Sets Final Bit in the last SGT entry */
 } caam_sgt_entry_type_t;
 
+struct hab_dek_blob_header {
+    uint8_t tag;            /* Constant identifying HAB struct: 0x81 */
+    uint8_t len_msb;        /* Struct length in 8-bit msb */
+    uint8_t len_lsb;        /* Struct length in 8-bit lsb */
+    uint8_t par;            /* Constant value, HAB version: 0x43 */
+    uint8_t mode;           /* AES encryption CCM mode: 0x66 */
+    uint8_t alg;            /* AES encryption alg: 0x55 */
+    uint8_t size;           /* Unwrapped key value size in bytes */
+    uint8_t flg;            /* Key flags */
+} __attribute__((aligned(8)));
+
 int init_caam_env(void);
 
 void caam_test(void);
@@ -106,6 +117,8 @@ uint32_t caam_gen_blob_pa(uint32_t kmod_pa,
                           uint32_t plain_pa,
                           uint32_t blob_pa,
                           uint32_t size);
+/* generate dek blob */
+uint32_t caam_gen_dek_blob(uint8_t *dek, uint32_t dek_size, uint8_t *dek_blob);
 
 uint32_t caam_hwrng_pa(uint32_t buf_pa, uint32_t len);
 

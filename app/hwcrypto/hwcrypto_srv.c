@@ -339,6 +339,51 @@ fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
 }
 
+static int hwcrypto_gen_dek_blob(struct hwcrypto_chan_ctx* ctx,
+                                 struct hwcrypto_msg* hdr,
+                                 uint8_t *req_data,
+                                 size_t req_data_len) {
+    uint8_t *dek = NULL, *blob = NULL;
+    uint32_t dek_size, blob_size = 0;
+    uint32_t rc = 0;
+
+    assert(hdr);
+    assert(req_data);
+
+    /* The payload format should be 'dek' + 'dek_size' */
+    dek_size = *((uint32_t *)req_data);
+    dek = req_data + sizeof(uint32_t);
+
+    /* sanity check the dek size */
+    if ((dek_size != 16) && (dek_size != 24) && (dek_size != 32)) {
+        TLOGE("wrong input dek size!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    blob_size = dek_size + CAAM_KB_HEADER_LEN + HAB_DEK_BLOB_HEADER_LEN;
+    blob = malloc(blob_size);
+    if (!blob) {
+        TLOGE("failed to allocate dek blob memory!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    if (caam_gen_dek_blob(dek, dek_size, blob)) {
+        TLOGE("failed to generate dek blob!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+    hdr->status = HWCRYPTO_ERROR_NONE;
+
+exit:
+    rc = hwcrypto_send_rsp(ctx, hdr, blob, blob_size);
+
+    if (blob)
+        free(blob);
+    return rc;
+}
+
 /*
  *  Read and queue HWCRYPTO request message
  */
@@ -394,6 +439,10 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
 
     case HWCRYPTO_PROVISION_WV_KEY_ENC:
         rc = hwcrypto_provision_wv_key_enc(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_GEN_DEK_BLOB:
+        rc = hwcrypto_gen_dek_blob(ctx, &hdr, req_data, req_data_len);
         break;
 
     default:
