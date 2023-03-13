@@ -275,6 +275,22 @@ static long message_dispatch(matter_message* msg,
         TLOGD("Dispatching MATTER_P256_KEYPAIR_ECDH_DERIVE_SECRET, size: %d", payload_size);
         return do_dispatch(&TrustyMatter::P256KeypairECDH_Derive_secret, msg, payload_size,
                            out, out_size);
+    case MATTER_HAS_OP_KEYPAIR_FOR_FABRIC:
+        TLOGD("Dispatching MATTER_HAS_OP_KEYPAIR_FOR_FABRIC, size: %d", payload_size);
+        return do_dispatch(&TrustyMatter::HasOpKeypairForFabric, msg, payload_size,
+                           out, out_size);
+    case MATTER_COMMIT_OP_KEYPAIR_FOR_FABRIC:
+        TLOGD("Dispatching MATTER_COMMIT_OP_KEYPAIR_FOR_FABRIC, size: %d", payload_size);
+        return do_dispatch(&TrustyMatter::CommitOpKeypairForFabric, msg, payload_size,
+                           out, out_size);
+    case MATTER_REMOVE_OP_KEYPAIR_FOR_FABRIC:
+        TLOGD("Dispatching MATTER_REMOVE_OP_KEYPAIR_FOR_FABRIC, size: %d", payload_size);
+        return do_dispatch(&TrustyMatter::RemoveOpKeypairForFabric, msg, payload_size,
+                           out, out_size);
+    case MATTER_SIGN_WITH_STORED_OPKEY:
+        TLOGD("Dispatching MATTER_SIGN_WITH_STORED_OPKEY, size: %d", payload_size);
+        return do_dispatch(&TrustyMatter::SignWithStoredOpKey, msg, payload_size,
+                           out, out_size);
     }
 
     TLOGE("Cannot dispatch unknown command %d", msg->cmd);
@@ -363,6 +379,10 @@ int main(void) {
     TLOGE("matter init.\n");
 
     device = new (std::nothrow) TrustyMatter();
+    if (device->OPKeyInitialize()) {
+        TLOGE("failed to initialize OPKeyPair!\n");
+        return ERR_GENERIC;
+    }
 
     hset = tipc_hset_create();
     if (IS_ERR(hset)) {
