@@ -16,14 +16,16 @@
  * limitations under the License.
  */
 
+//#define TLOG_LVL 5
+#define TLOG_TAG "trusty_matter"
+
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <matter_messages.h>
 #include <trusty_matter.h>
 #include <trusty_log.h>
 #include <secure_storage_manager.h>
-
-#define TLOG_TAG "trusty_matter"
+#include <utils.h>
 
 namespace matter {
 const char* MatterCertDAC = "MatterCertDAC";
@@ -31,15 +33,49 @@ const char* MatterCertPAI = "MatterCertPAI";
 const char* MatterCertCD  = "MatterCertCD";
 const char* MatterDACPrivateKey  = "MatterDACPrivateKey";
 const char* MatterDACPublicKey   = "MatterDACPublicKey";
-constexpr size_t kP256_PublicKey_Length = 65;
-constexpr size_t kP256_PrivateKey_Length = 32;
-constexpr size_t kP256_ECDSA_Signature_Length_Raw = 64;
-constexpr size_t kSHA256_Hash_Length = 32;
+const char* MatterOperationKeyPair = "MatterOperationKeyPair";
+
+matter_error_t TrustyMatter::OPKeyInitialize() {
+    matter_error_t error = MATTER_ERROR_OK;
+
+    TLOGD("%s: In OPKeyInitialize.\n", __func__);
+
+    opkeypair.reset(new (std::nothrow) OpKeyPair);
+    if (!(opkeypair.get())) {
+        TLOGE("%s: failed to allocate memory for OPKeyPair!\n", __func__);
+        return MATTER_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
+
+    SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
+    if (ss_manager == nullptr) {
+        TLOGE("%s: failed to get secure storage instance!\n", __func__);
+        return MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+    }
+
+    Buffer opkey = ss_manager->ReadCertFromStorage(MatterOperationKeyPair, &error);
+    if ((error != MATTER_ERROR_OK) || (opkey.buffer_size() != sizeof(OpKeyPair)) || \
+        memcmp(opkey.begin(), MATTER_FABRIC_MAIGC, sizeof(MATTER_FABRIC_MAIGC))) {
+        TLOGE("%s:OPKeyPair is invalid, reinitializing...\n", __func__);
+        memset(opkeypair.get(), 0, sizeof(OpKeyPair));
+        memcpy(opkeypair->magic, MATTER_FABRIC_MAIGC, sizeof(MATTER_FABRIC_MAIGC));
+        // update the keypair into secure storage
+        error = ss_manager->WriteCertToStorage(MatterOperationKeyPair,
+                                               (const uint8_t *)(opkeypair.get()), sizeof(OpKeyPair));
+    } else {
+        // we get a valid OpKeyPair from secure storage
+        memcpy((uint8_t *)(opkeypair.get()), opkey.begin(), sizeof(OpKeyPair));
+        error = MATTER_ERROR_OK;
+    }
+
+    return error;
+}
 
 void TrustyMatter::ImportCert(const ImportCertRequest &request,
                               ImportCertResponse *response, const char* name) {
     if (response == nullptr)
         return;
+
+    TLOGD("%s: In ImportCert, name:%s\n", __func__, name);
 
     SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
     if (ss_manager == nullptr) {
@@ -60,6 +96,8 @@ void TrustyMatter::ImportCert(const ImportCertRequest &request,
 void TrustyMatter::ExportCert(const ExportCertRequest &request, ExportCertResponse *response, const char* name) {
     if (response == nullptr)
         return;
+
+    TLOGD("%s: In ExportCert, name:%s\n", __func__, name);
 
     SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
     if (ss_manager == nullptr) {
@@ -119,6 +157,8 @@ void TrustyMatter::SignWithDACKey(const SignWithDAKeyRequest &request,
     uint8_t sig[kP256_ECDSA_Signature_Length_Raw];
     int ret = 0;
 
+    TLOGD("%s: In SignWithDACKey.\n", __func__);
+
     /* load DA Keys */
     SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
     if (ss_manager == nullptr) {
@@ -168,6 +208,9 @@ void TrustyMatter::P256KeypairInitialize(const P256KPInitializeRequest& request,
     int ret = 0;
     uint8_t pubkey[kP256_PublicKey_Length];
 
+    TLOGD("%s: In P256KeypairInitialize, fabric:%d\n", __func__, request.fabric_index);
+
+    // get valid P256KeyPair instance
     handler = request.p256_handler;
     if (handler != 0) {
         // we already get a valid instance, use it directly.
@@ -192,6 +235,7 @@ void TrustyMatter::P256KeypairInitialize(const P256KPInitializeRequest& request,
     }
     response->p256_handler = handler;
 
+    p256_keypair->fabric_index = request.fabric_index;
     ret = p256_keypair->Initialize(pubkey);
     if (ret != 0) {
         response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
@@ -210,6 +254,8 @@ void TrustyMatter::P256KeypairSerialize(const P256KPSerializeRequest& request,
     int ret = 0;
     uint8_t prikey[kP256_PrivateKey_Length];
 
+    TLOGD("%s: In P256KeypairSerialize.\n", __func__);
+
     handler = request.p256_handler;
     if (handler != 0) {
         // we already get a valid instance, use it directly.
@@ -222,6 +268,12 @@ void TrustyMatter::P256KeypairSerialize(const P256KPSerializeRequest& request,
         }
     } else {
         TLOGE("Get invalid p256 handler: %lu!\n", handler);
+        response->error = MATTER_ERROR_INVALID_ARGUMENT;
+        return;
+    }
+
+    if (IsValidFabricIndex(p256_keypair->fabric_index)) {
+        TLOGE("%s: can not export OPKeyPair!\n", __func__);
         response->error = MATTER_ERROR_INVALID_ARGUMENT;
         return;
     }
@@ -243,6 +295,8 @@ void TrustyMatter::P256KeypairDeserialize(const P256KPDeserializeRequest& reques
     const uint8_t *pubkey = nullptr, *prikey = nullptr;
     size_t pubkey_size = 0, prikey_size = 0;
     int ret = 0;
+
+    TLOGD("%s: In P256KeypairDeserialize.\n", __func__);
 
     handler = request.p256_handler;
     if (handler != 0) {
@@ -307,6 +361,8 @@ void TrustyMatter::P256KeypairECSignMsg(const P256KPECSignMsgRequest& request,
     uint64_t handler = 0;
     int ret = 0;
 
+    TLOGD("%s: In P256KeypairECSignMsg.\n", __func__);
+
     handler = request.p256_handler;
     if (handler != 0) {
         // we already get a valid instance, use it directly.
@@ -342,6 +398,8 @@ void TrustyMatter::P256KeypairNewCSR(const P256KPNewCSRRequest& request,
     uint8_t *out_csr = nullptr;
     int csr_length = 0;
     int ret = 0;
+
+    TLOGD("%s: In P256KeypairNewCSR.\n", __func__);
 
     handler = request.p256_handler;
     if (handler != 0) {
@@ -382,6 +440,8 @@ void TrustyMatter::P256KeypairECDH_Derive_secret(const P256KPECDHDeriveSecretReq
     size_t secret_size = 0;
     int ret = 0;
 
+    TLOGD("%s: In P256KeypairECDH_Derive_secret.\n", __func__);
+
     handler = request.p256_handler;
     if (handler != 0) {
         // we already get a valid instance, use it directly.
@@ -417,6 +477,215 @@ void TrustyMatter::P256KeypairECDH_Derive_secret(const P256KPECDHDeriveSecretReq
     response->error = MATTER_ERROR_OK;
     response->secret.Reinitialize(secret, secret_size);
     free(secret);
+}
+
+void TrustyMatter::HasOpKeypairForFabric(const HasOpKeypairForFabricRequest& request,
+                                         HasOpKeypairForFabricResponse* response) {
+    int index = 0;
+    uint8_t fabric_index;
+
+    fabric_index = request.fabric_index;
+    if (!IsValidFabricIndex(fabric_index)) {
+        TLOGE("%s: Invalid fabric index!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+
+    TLOGD("%s: In HasOpKeypairForFabric, fabric: %d \n", __func__, fabric_index);
+
+    // check the stored operational keypair
+    if (!(opkeypair.get()) || \
+        memcmp(opkeypair->magic, MATTER_FABRIC_MAIGC, sizeof(MATTER_FABRIC_MAIGC))) {
+        TLOGE("%s: operational keypair struct is not well initialized!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+
+    // try to find one
+    for (index = 0; index < MATTER_MAX_FABRIC_SLOT; index++) {
+        if (opkeypair->slot[index].FabricIndex == fabric_index) {
+            response->keypair_exist = true;
+            break;
+        }
+    }
+
+    if (index == MATTER_MAX_FABRIC_SLOT)
+        response->keypair_exist = false;
+
+    response->error = MATTER_ERROR_OK;
+}
+
+void TrustyMatter::CommitOpKeypairForFabric(const CommitOpKeypairForFabricRequest& request,
+                                            CommitOpKeypairForFabricResponse* response) {
+    int ret = 0, index = 0;
+    uint8_t fabric_index;
+    uint64_t p256_handler;
+    P256Keypair *p256_keypair = nullptr;
+    uint8_t prikey[kP256_PrivateKey_Length];
+
+    fabric_index = request.fabric_index;
+    p256_handler = request.p256_handler;
+    if (!IsValidFabricIndex(fabric_index)) {
+        TLOGE("%s: Invalid fabric index!\n", __func__);
+        response->error = MATTER_ERROR_INVALID_FABRIC_ID;
+        return;
+    }
+
+    TLOGD("%s: In CommitOpKeypairForFabric, fabric: %d\n", __func__, fabric_index);
+
+    if (p256_handler != 0) {
+        // we already get a valid instance, use it directly.
+        TLOGD("%s: get valid handle, use it!\n", __func__);
+        p256_keypair = p256_keypair_table.Find(p256_handler);
+        if (p256_keypair == nullptr) {
+            TLOGE("%s: can't find keypair instance!\n", __func__);
+            response->error = MATTER_ERROR_INVALID_ARGUMENT;
+            return;
+        }
+    } else {
+        TLOGE("%s: Get invalid p256 handler: %lu!\n", __func__, p256_handler);
+        response->error = MATTER_ERROR_INVALID_ARGUMENT;
+        return;
+    }
+
+    // get the private key
+    ret = p256_keypair->Serialize(prikey);
+    if (ret != 0) {
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+
+    // first, we check if the same fabricIndex alreay exist
+    for (index = 0; index < MATTER_MAX_FABRIC_SLOT; index++) {
+        if (opkeypair->slot[index].FabricIndex == fabric_index)
+            break;
+    }
+    if (index == MATTER_MAX_FABRIC_SLOT) {
+        TLOGD("%s: No overriding fabricIndex: %d\n", __func__, fabric_index);
+        // second, let's find an empty slot
+        for (index = 0; index < MATTER_MAX_FABRIC_SLOT; index++) {
+            if (opkeypair->slot[index].FabricIndex == kUndefinedFabricIndex)
+                break;
+        }
+        if (index == MATTER_MAX_FABRIC_SLOT) {
+            TLOGE("%s: No available OpKeyPair slot!\n", __func__);
+            response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+            return;
+        }
+    }
+
+    // we should get a suitable slot when we get here
+    opkeypair->slot[index].FabricIndex = fabric_index;
+    memcpy(opkeypair->slot[index].PrivateKey, prikey, kP256_PrivateKey_Length);
+
+    // update the keyslot to secure storage
+    SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
+    if (ss_manager == nullptr) {
+        TLOGE("%s: failed to get secure storage instance!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+    response->error = ss_manager->WriteCertToStorage(MatterOperationKeyPair,
+                                                     (const uint8_t *)opkeypair.get(), sizeof(OpKeyPair));
+}
+
+void TrustyMatter::RemoveOpKeypairForFabric(const RemoveOpKeypairForFabricRequest& request,
+                                            RemoveOpKeypairForFabricResponse* response) {
+    int index = 0;
+    uint8_t fabric_index;
+
+    fabric_index = request.fabric_index;
+    if (!IsValidFabricIndex(fabric_index)) {
+        TLOGE("%s: Invalid fabric index!\n", __func__);
+        response->error = MATTER_ERROR_INVALID_FABRIC_ID;
+        return;
+    }
+
+    TLOGD("%s: In RemoveOpKeypairForFabric, fabric: %d\n", __func__, fabric_index);
+
+    // the keypair should already in memory, let's find it
+    for (index = 0; index < MATTER_MAX_FABRIC_SLOT; index++) {
+        if (opkeypair->slot[index].FabricIndex == fabric_index) {
+            // bingo!
+            opkeypair->slot[index].FabricIndex = kUndefinedFabricIndex;
+            memset(opkeypair->slot[index].PrivateKey, 0, kP256_PrivateKey_Length);
+            break;
+        }
+    }
+    if (index == MATTER_MAX_FABRIC_SLOT) {
+        TLOGE("%s: can't find operation keypair corresponding to fabric: %d!\n", __func__, fabric_index);
+        response->error = MATTER_ERROR_INVALID_FABRIC_ID;
+        return;
+    }
+
+    // update the keypair to secure storage
+    SecureStorageManager* ss_manager = SecureStorageManager::get_instance();
+    if (ss_manager == nullptr) {
+        TLOGE("%s: failed to get secure storage instance!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+    response->error = ss_manager->WriteCertToStorage(MatterOperationKeyPair,
+                                                     (const uint8_t *)opkeypair.get(), sizeof(OpKeyPair));
+}
+
+void TrustyMatter::SignWithStoredOpKey(const SignWithStoredOpKeyRequest& request,
+                                       SignWithStoredOpKeyResponse* response) {
+    int index = 0, ret = 0;
+    uint8_t fabric_index;
+    const uint8_t *msg = nullptr;
+    size_t msg_size  = 0;
+    uint8_t prikey[kP256_PrivateKey_Length];
+    uint8_t digest[kSHA256_Hash_Length];
+    uint8_t sig[kP256_ECDSA_Signature_Length_Raw];
+
+    fabric_index = request.fabric_index;
+    if (!IsValidFabricIndex(fabric_index)) {
+        TLOGE("%s: Invalid fabric index!\n", __func__);
+        response->error = MATTER_ERROR_INVALID_FABRIC_ID;
+        return;
+    }
+
+    TLOGD("%s: In SignWithStoredOpKey, fabric: %d\n", __func__, fabric_index);
+
+    // the keypair should already in memory, let's find it
+    for (index = 0; index < MATTER_MAX_FABRIC_SLOT; index++) {
+        if (opkeypair->slot[index].FabricIndex == fabric_index) {
+            // bingo!
+            memcpy(prikey, opkeypair->slot[index].PrivateKey, kP256_PrivateKey_Length);
+            break;
+        }
+    }
+    if (index == MATTER_MAX_FABRIC_SLOT) {
+        TLOGE("%s: can't find operation keypair corresponding to fabric: %d!\n", __func__, fabric_index);
+        response->error = MATTER_ERROR_INVALID_FABRIC_ID;
+        return;
+    }
+
+    /* Get the sha256 digest of the msg */
+    msg = request.msg.begin();
+    msg_size = request.msg.buffer_size();
+    memset(&digest[0], 0, sizeof(digest));
+    SHA256(msg, msg_size, digest);
+
+    UniquePtr<P256Keypair> p256_keypair(new (std::nothrow) P256Keypair);
+    /* import keys */
+    ret = p256_keypair->Deserialize(nullptr, 0, prikey, kP256_PrivateKey_Length);
+    if (ret != 0) {
+        TLOGE("%s: failed to import key!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+    /* sign message */
+    ret = p256_keypair->ECSignMsg(digest, kSHA256_Hash_Length, sig);
+    if (ret != 0) {
+        TLOGE("%s: failed to sign message!\n", __func__);
+        response->error = MATTER_ERROR_SECURE_HW_COMMUNICATION_FAILED;
+        return;
+    }
+
+    response->sig.Reinitialize(sig, kP256_ECDSA_Signature_Length_Raw);
+    response->error = MATTER_ERROR_OK;;
 }
 
 } // namespace matter

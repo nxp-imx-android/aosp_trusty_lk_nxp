@@ -35,6 +35,7 @@ public:
     int ECDH_Derive_Secret(const uint8_t *remote_pubkey, uint8_t **secret, size_t &secret_size);
 
     uint64_t handler = 0;
+    uint8_t fabric_index = 0;
 private:
     EC_KEY *ec_key = nullptr;
 };

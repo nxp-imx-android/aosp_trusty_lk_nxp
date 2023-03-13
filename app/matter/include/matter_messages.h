@@ -119,16 +119,19 @@ struct SignWithDAKeyResponse : public MatterResponse {
 
 struct P256KPInitializeRequest: public Serializable {
     size_t SerializedSize() const override {
-         return sizeof(uint64_t);
-     }
+        return sizeof(uint64_t) + sizeof(uint8_t);
+    }
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override {
-        return append_uint64_to_buf(buf, end, p256_handler);
+        buf = append_uint64_to_buf(buf, end, p256_handler);
+        return append_to_buf(buf, end, &fabric_index, sizeof(fabric_index));
     }
     bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
-        return copy_uint64_from_buf(buf_ptr, end, &p256_handler);
+        return copy_uint64_from_buf(buf_ptr, end, &p256_handler) &&
+               copy_from_buf(buf_ptr, end, &fabric_index, sizeof(fabric_index));
     }
 
     uint64_t p256_handler;
+    uint8_t fabric_index;
 };
 
 struct P256KPInitializeResponse: public MatterResponse {
@@ -305,6 +308,92 @@ struct P256KPECDHDeriveSecretResponse: public MatterResponse {
 
     uint64_t p256_handler;
     Buffer secret;
+};
+
+struct HasOpKeypairForFabricRequest: public Serializable {
+    size_t SerializedSize() const override {
+        return sizeof(fabric_index);
+    }
+    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override {
+        return append_to_buf(buf, end, &fabric_index, sizeof(fabric_index));
+    }
+    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
+        return copy_from_buf(buf_ptr, end, &fabric_index, sizeof(fabric_index));
+    }
+
+    uint8_t fabric_index;
+};
+
+struct HasOpKeypairForFabricResponse: public MatterResponse {
+    size_t NonErrorSerializedSize() const override { return sizeof(keypair_exist); }
+    uint8_t* NonErrorSerialize(uint8_t* buf, const uint8_t* end) const override {
+        return append_to_buf(buf, end, &keypair_exist, sizeof(keypair_exist));
+    }
+    bool NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
+        return copy_from_buf(buf_ptr, end, &keypair_exist, sizeof(keypair_exist));
+    }
+
+    bool keypair_exist;
+};
+
+struct CommitOpKeypairForFabricRequest: public Serializable {
+    size_t SerializedSize() const override {
+        return sizeof(p256_handler) + sizeof(fabric_index);
+    }
+    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override {
+        buf = append_uint64_to_buf(buf, end, p256_handler);
+        return append_to_buf(buf, end, &fabric_index, sizeof(fabric_index));
+    }
+    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
+        return copy_uint64_from_buf(buf_ptr, end, &p256_handler) &&
+               copy_from_buf(buf_ptr, end, &fabric_index, sizeof(fabric_index));
+    }
+
+    uint64_t p256_handler;
+    uint8_t fabric_index;
+};
+
+using CommitOpKeypairForFabricResponse = EmptyMatterResponse;
+
+struct RemoveOpKeypairForFabricRequest: public Serializable {
+    size_t SerializedSize() const override {
+        return sizeof(fabric_index);
+    }
+    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override {
+        return append_to_buf(buf, end, &fabric_index, sizeof(fabric_index));
+    }
+    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
+        return copy_from_buf(buf_ptr, end, &fabric_index, sizeof(fabric_index));
+    }
+
+    uint8_t fabric_index;
+};
+
+using RemoveOpKeypairForFabricResponse = EmptyMatterResponse;
+
+struct SignWithStoredOpKeyRequest: public Serializable {
+    size_t SerializedSize() const override {
+        return sizeof(fabric_index) + msg.SerializedSize();
+    }
+    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override {
+        buf = append_to_buf(buf, end, &fabric_index, sizeof(fabric_index));
+        return msg.Serialize(buf, end);
+    }
+    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override {
+        return copy_from_buf(buf_ptr, end, &fabric_index, sizeof(fabric_index)) &&
+               msg.Deserialize(buf_ptr, end);
+    }
+
+    uint8_t fabric_index;
+    Buffer msg;
+};
+
+struct SignWithStoredOpKeyResponse: public MatterResponse {
+    size_t NonErrorSerializedSize() const override { return sig.SerializedSize(); }
+    uint8_t* NonErrorSerialize(uint8_t* buf, const uint8_t* end) const override { return sig.Serialize(buf, end); }
+    bool NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) override { return sig.Deserialize(buf_ptr, end); }
+
+    Buffer sig;
 };
 
 }  // namespace matter
