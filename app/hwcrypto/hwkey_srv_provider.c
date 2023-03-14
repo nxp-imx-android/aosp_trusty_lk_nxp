@@ -390,6 +390,7 @@ static const uuid_t ss_uuid = SECURE_STORAGE_SERVER_APP_UUID;
 static size_t rpmb_keyblob_len;
 static uint8_t rpmb_keyblob[RPMBKEY_LEN];
 static bool rpmb_keyslot_valid = true;
+static uint8_t key_buf[RPMB_SS_AUTH_KEY_SIZE];
 
 /*
  * Fetch RPMB Secure Storage Authentication key
@@ -403,40 +404,12 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
     *klen = RPMB_SS_AUTH_KEY_SIZE;
     return HWKEY_NO_ERROR;
 #else
-    uint32_t res;
     assert(kbuf_len >= RPMB_SS_AUTH_KEY_SIZE);
 
-    /* Get the rpmb key from keyslot if it's valid, otherwise return huk */
-    if (rpmb_keyslot_valid) {
-        if (rpmb_keyblob_len != sizeof(rpmb_keyblob))
-            return HWKEY_ERR_NOT_FOUND; /* no RPMB key */
-
-        res = caam_decap_blob(skeymod, sizeof(skeymod), kbuf, rpmb_keyblob,
-                              RPMB_SS_AUTH_KEY_SIZE);
-        if (res == CAAM_SUCCESS)
-            *klen = RPMB_SS_AUTH_KEY_SIZE;
-        else {
-            /* wipe target buffer */
-            TLOGE("%s: failed to unpack rpmb key\n", __func__);
-            goto fail;
-        }
-    } else {
-        res = caam_gen_bkek_key(skeymod, sizeof(skeymod),
-                                (uint32_t)(intptr_t)kbuf, HUK_KEY_SIZE);
-        if (res == CAAM_SUCCESS)
-            *klen = HUK_KEY_SIZE;
-        else {
-            TLOGE("%s: failed to generate huk!\n", __func__);
-            goto fail;
-        }
-    }
+    memcpy(kbuf, key_buf, RPMB_SS_AUTH_KEY_SIZE);
+    *klen = RPMB_SS_AUTH_KEY_SIZE;
 
     return HWKEY_NO_ERROR;
-
-fail:
-    memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
-    return HWKEY_ERR_GENERIC;
-
 #endif
 }
 
@@ -832,6 +805,33 @@ static void unpack_kbox(void) {
 }
 
 /*
+ *  Backup the rpmb key from keyslot if it's valid, otherwise backup huk
+ */
+static void generate_rpmb_ss_auth_key(void) {
+    int rc;
+
+    if (rpmb_keyslot_valid) {
+        if (rpmb_keyblob_len != sizeof(rpmb_keyblob)) {
+            TLOGE("No RPMB key!\n");
+            abort();
+        }
+        rc = caam_decap_blob(skeymod, sizeof(skeymod), key_buf, rpmb_keyblob,
+                          RPMB_SS_AUTH_KEY_SIZE);
+        if (rc != CAAM_SUCCESS) {
+            TLOGE("Generate rpmb key fail!\n");
+            abort();
+        }
+    } else {
+        rc = caam_gen_bkek_key(skeymod, sizeof(skeymod),
+                          (uint32_t)(intptr_t)key_buf, HUK_KEY_SIZE);
+        if (rc != CAAM_SUCCESS) {
+            TLOGE("Generate rpmb key fail!\n");
+            abort();
+        }
+    }
+}
+
+/*
  *  Initialize Fake HWKEY service provider
  */
 void hwkey_init_srv_provider(void) {
@@ -855,6 +855,8 @@ void hwkey_init_srv_provider(void) {
     }
 
     unpack_kbox();
+
+    generate_rpmb_ss_auth_key();
 
 #endif
     /* install key handlers */
