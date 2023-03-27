@@ -107,11 +107,11 @@ static bool check_secure_regs(uint32_t reg_index, uint64_t regs_base) {
     return false;
 }
 static bool check_regs_range(uint32_t reg_index, uint64_t regs_base) {
-    if ((regs_base == SOCLE_LOGIC_0_BASE) && (reg_index < DEC_IO_SIZE_0 && reg_index >= 0))
+    if ((regs_base == SOCLE_LOGIC_0_BASE) && (reg_index < DEC_IO_SIZE_0))
         return true;
-    else if ((regs_base == SOCLE_LOGIC_1_BASE) && (reg_index < DEC_IO_SIZE_1 && reg_index >= 0))
+    else if ((regs_base == SOCLE_LOGIC_1_BASE) && (reg_index < DEC_IO_SIZE_1))
         return true;
-    else if ((regs_base == BLK_CTL_BASE) && (reg_index < CTRLBLK_VIRT_SIZE && reg_index >= 0))
+    else if ((regs_base == BLK_CTL_BASE) && (reg_index < CTRLBLK_VIRT_SIZE))
         return true;
     return false;
 }
@@ -185,10 +185,10 @@ static long ctrlblk_read_regs(uint32_t reg_index) {
 }
 
 static long vpu_secure_ctrl_regs(uint32_t reg_index, uint32_t val, u32 option) {
-    uint32_t (*buffer_paddr_array)[2], vpu_rdc_addr;
-    size_t buffer_paddr_array_size;
-    uint8_t align_flags;
-    uint64_t regs_viraddr_base ;
+    uint32_t (*buffer_paddr_array)[2] = NULL, vpu_rdc_addr = 0;
+    size_t buffer_paddr_array_size = 0;
+    uint8_t align_flags = 0;
+    uint64_t regs_viraddr_base = 0;
     if ((option & 0xf0) >> 4 == 0) {
         buffer_paddr_array = inout_buffer_paddr;
         buffer_paddr_array_size = 2;
