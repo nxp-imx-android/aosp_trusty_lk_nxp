@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * Copyright 2018 NXP
+ * Copyright 2023 NXP
  */
 
 #define TLOG_TAG "hwcrypto_srv"
@@ -545,6 +545,196 @@ static int hwcrypto_provision_firmware_encrypt_key(struct hwcrypto_chan_ctx* ctx
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
 }
 
+static int hwcrypto_provision_dek_blob(struct hwcrypto_chan_ctx* ctx,
+                                     struct hwcrypto_msg* hdr,
+                                     uint8_t *req_data,
+                                     size_t req_data_len) {
+    storage_session_t session = 0;
+    file_handle_t file_handle = 0;
+    storage_off_t file_size = 0;
+    uint8_t *dek_blob = NULL;
+    uint32_t dek_blob_size;
+    const char* DekBlobFilename = NULL;
+    uint32_t rc = 0;
+
+    dek_blob_size = *((uint32_t *)req_data);
+    dek_blob = req_data + sizeof(uint32_t);
+
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to connect to storage TA: %d!\n", rc);
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    if (hdr -> cmd == HWCRYPTO_PROVISION_SPL_DEK_BLOB)
+        DekBlobFilename = "spl_dek.key";
+    else if (hdr -> cmd == HWCRYPTO_PROVISION_BOOTLOADER_DEK_BLOB)
+        DekBlobFilename = "bootloader_dek.key";
+    else {
+        TLOGE("hwcrypto: Wrong command!\n");
+        goto exit;
+    }
+
+    rc = storage_open_file(session, &file_handle, DekBlobFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to open keybox: %d!\n", rc);
+        storage_close_session(session);
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    if (storage_get_file_size(file_handle, &file_size) && file_size) {
+        TLOGE("hwcrypto: dek blob already exists, will be overwritten!\n");
+    }
+
+    rc = storage_write(file_handle, 0, dek_blob, dek_blob_size, STORAGE_OP_COMPLETE);
+    if (rc < 0 || rc != dek_blob_size) {
+        TLOGE("hwcrypto: %s write failed!\n", DekBlobFilename);
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    } else {
+        TLOGE("hwcrypto: %s write successfully!\n", DekBlobFilename);
+        hdr->status = HWCRYPTO_ERROR_NONE;
+        goto exit;
+    }
+
+exit:
+    if (file_handle)
+        storage_close_file(file_handle);
+    if (session)
+        storage_close_session(session);
+    rc = hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+    return rc;
+}
+
+static int hwcrypto_get_dek_blob_info(struct hwcrypto_chan_ctx* ctx,
+                                       struct hwcrypto_msg* hdr) {
+    storage_session_t session = 0;
+    file_handle_t file_handle = 0;
+    uint8_t *dek_blob = NULL;
+    storage_off_t dek_blob_size = 0;
+    uint32_t dek_size = 0;
+    const char *DekBlobFilename;
+    int rc = 0;
+
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to connect to storage TA!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    switch (hdr -> cmd) {
+    case HWCRYPTO_GET_SPL_DEK_BLOB:
+    case HWCRYPTO_GET_SPL_DEK_BLOB_SIZE:
+        DekBlobFilename = "spl_dek.key";
+        break;
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB:
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB_SIZE:
+        DekBlobFilename = "bootloader_dek.key";
+        break;
+    default:
+        TLOGE("hwkey: mismatched command!\n");
+        goto exit;
+    }
+    TLOGE("hwkey: Attempting to extract dek-blob: %s\n", DekBlobFilename);
+
+    /* open file in secure storage */
+    rc = storage_open_file(session, &file_handle, DekBlobFilename, 0, 0);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to open %s!\n", DekBlobFilename);
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    /* get dek blob size */
+    rc = storage_get_file_size(file_handle, &dek_blob_size);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to get dek blob size!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    } else {
+        dek_size = dek_blob_size - CAAM_KB_HEADER_LEN - HAB_DEK_BLOB_HEADER_LEN;
+        if ((dek_size != 16) && (dek_size != 24) && (dek_size != 32)) {
+            TLOGE("wrong dek size!\n");
+            hdr->status = HWCRYPTO_ERROR_INTERNAL;
+            goto exit;
+        }
+    }
+
+    if ( hdr -> cmd == HWCRYPTO_GET_SPL_DEK_BLOB || hdr -> cmd == HWCRYPTO_GET_BOOTLOADER_DEK_BLOB ) {
+        /* read the dek-blob */
+        dek_blob = malloc(dek_blob_size);
+        if (!dek_blob) {
+            TLOGE("hwkey: memory allocation failed!\n");
+            goto exit;
+        }
+
+        rc = storage_read(file_handle, 0, (uint8_t*)dek_blob, dek_blob_size);
+        if (rc < 0) {
+            TLOGE("hwkey: failed to read dek blob!\n");
+            hdr->status = HWCRYPTO_ERROR_INTERNAL;
+            goto exit;
+        }
+    }
+
+    hdr->status = HWCRYPTO_ERROR_NONE;
+
+    switch (hdr -> cmd) {
+    case HWCRYPTO_GET_SPL_DEK_BLOB_SIZE:
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB_SIZE:
+        rc = hwcrypto_send_rsp(ctx, hdr, (uint8_t*)(&dek_blob_size), sizeof(uint32_t));
+        break;
+    case HWCRYPTO_GET_SPL_DEK_BLOB:
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB:
+        rc = hwcrypto_send_rsp(ctx, hdr, (uint8_t*)(dek_blob), dek_blob_size);
+        break;
+    default:
+        TLOGE("hwkey: mismatched command!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+
+    if (rc < 0) {
+        TLOGE("hwkey: dek blob send failed!\n");
+    } else {
+        TLOGE("hwkey: dek blob send successfully!\n");
+    }
+
+exit:
+    if (dek_blob)
+        free(dek_blob);
+    if (file_handle)
+        storage_close_file(file_handle);
+    if (session)
+        storage_close_session(session);
+    if (hdr->status != HWCRYPTO_ERROR_NONE)
+        hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+    return rc;
+}
+
+static bool check_whitelist(enum hwcrypto_cmd cmd)
+{
+    uint32_t count = 0;
+    enum hwcrypto_cmd whitelist[] = {
+        HWCRYPTO_GET_SPL_DEK_BLOB,
+        HWCRYPTO_GET_SPL_DEK_BLOB_SIZE,
+        HWCRYPTO_GET_BOOTLOADER_DEK_BLOB,
+        HWCRYPTO_GET_BOOTLOADER_DEK_BLOB_SIZE,
+    };
+
+    while (count < sizeof(whitelist))
+    {
+        if (cmd != whitelist[count])
+            count++;
+        else
+            return true;
+    }
+    return false;
+}
+
 /*
  *  Read and queue HWCRYPTO request message
  */
@@ -560,7 +750,7 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         return rc;
     }
 
-    if (boot_state_locked) {
+    if (!check_whitelist(hdr.cmd) && boot_state_locked) {
         hdr.status = HWCRYPTO_ERROR_NONE;
         TLOGE("Can't execute hwcrypto commands when boot state is locked.\n");
         rc = hwcrypto_send_rsp(ctx, &hdr, NULL, 0);
@@ -618,6 +808,18 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
 
     case HWCRYPTO_PROVISION_FIRMWARE_ENCRYPT_KEY:
         rc = hwcrypto_provision_firmware_encrypt_key(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_PROVISION_SPL_DEK_BLOB:
+    case HWCRYPTO_PROVISION_BOOTLOADER_DEK_BLOB:
+        rc = hwcrypto_provision_dek_blob(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_GET_SPL_DEK_BLOB:
+    case HWCRYPTO_GET_SPL_DEK_BLOB_SIZE:
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB:
+    case HWCRYPTO_GET_BOOTLOADER_DEK_BLOB_SIZE:
+        rc = hwcrypto_get_dek_blob_info(ctx, &hdr);
         break;
 
     default:
