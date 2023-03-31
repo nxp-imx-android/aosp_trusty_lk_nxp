@@ -1594,7 +1594,11 @@ int caam_aes_cbc(uint32_t enc_flag,
     }
 
     /* iv */
-    if (cipher_arg_is_valid(iv_size, iv)) {
+    if (!cipher_arg_is_valid(iv_size, iv)) {
+        TLOGE("Missing IV!\n");
+	ret = -1;
+        goto exit;
+    } else {
         ret = handle_buffer((void *)iv, iv_size, &iv_tmp, &iv_pa);
         if (ret) {
             ret = -1;
@@ -1750,7 +1754,11 @@ int caam_aes_ctr(uint32_t enc_flag,
     }
 
     /* iv */
-    if (cipher_arg_is_valid(iv_size, iv)) {
+    if (!cipher_arg_is_valid(iv_size, iv)) {
+        TLOGE("Missing IV!\n");
+        ret = -1;
+        goto exit;
+    } else {
         ret = handle_buffer((void *)iv, iv_size, &iv_tmp, &iv_pa);
         if (ret) {
             ret = -1;
