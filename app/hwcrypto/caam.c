@@ -2293,7 +2293,7 @@ int caam_tdes_cbc(uint32_t enc_flag,
     caam_sgt_entry_t *input_text_sg = NULL, *output_text_sg = NULL;
     void *input_text_tmp = NULL, *output_text_tmp = NULL;
     void *iv_tmp = NULL, *key_tmp = NULL;
-    uint32_t input_text_sg_pa, output_text_sg_pa, iv_pa, key_pa;
+    uint32_t input_text_sg_pa, output_text_sg_pa, iv_pa = 0, key_pa;
     int ret = -1;
 
     /* text in */
