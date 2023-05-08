@@ -84,7 +84,7 @@ int get_widevine_g2d_secure_mode(int* secure_mode) {
         TLOGE("failed to send message and rc=%d\n", rc);
     }
 
-    struct uevent uevt;
+    struct uevent uevt = {0};
     rc = wait(chan, &uevt, INFINITE_TIME);
     if (rc != NO_ERROR || !(uevt.event & IPC_HANDLE_POLL_MSG)) {
         TLOGE("Port wait failed(%d) event:%d handle:%d\n", rc, uevt.event,
