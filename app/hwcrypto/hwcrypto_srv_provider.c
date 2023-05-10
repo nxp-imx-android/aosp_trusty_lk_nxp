@@ -85,6 +85,27 @@ int gen_bkek(uint32_t buf, uint32_t len) {
     else
         return HWCRYPTO_ERROR_NONE;
 }
+#else
+int encap_blob(uint32_t plain_pa, uint32_t size,
+               uint32_t blob_pa)
+{
+    //TODO add ELE implemetation
+    TLOGE("Error, Not supported.\n");
+    return HWCRYPTO_ERROR_INTERNAL;
+}
+
+int calculate_hash(uint32_t in_paddr, uint32_t in_len,
+                   uint32_t out_paddr, enum hash_algo algo) {
+    //TODO add ELE implemetation
+    TLOGE("Error, Not supported.\n");
+    return HWCRYPTO_ERROR_INTERNAL;
+}
+
+int gen_bkek(uint32_t buf, uint32_t len) {
+    //TODO add ELE implemetation
+    TLOGE("Error, Not supported.\n");
+    return HWCRYPTO_ERROR_INTERNAL;
+}
 #endif
 
 void hwcrypto_init_srv_provider(void) {

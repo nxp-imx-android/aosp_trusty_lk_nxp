@@ -50,6 +50,14 @@ MODULE_LIBRARY_DEPS += \
 	trusty/user/base/interface/hwaes
 endif
 
+ifeq (true,$(call TOBOOL,$(WITH_ELE_SUPPORT)))
+MODULE_DEFINES += \
+	WITH_ELE_SUPPORT=1
+
+MODULE_SRCS += \
+	$(LOCAL_DIR)/ele.c
+endif
+
 MODULE_INCLUDES += \
 	$(LOCAL_DIR) \
 	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include \
