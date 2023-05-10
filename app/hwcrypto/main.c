@@ -26,7 +26,6 @@
 #include "caam.h"
 #include "common.h"
 #include "hwkey_srv_priv.h"
-#include "hwrng_srv_priv.h"
 #include "hwcrypto_srv_priv.h"
 #include "hwaes_srv_priv.h"
 
@@ -198,7 +197,7 @@ int main(void) {
 
     TLOGD("Initializing\n");
 
-#ifndef SOFTWARE_CRYPTO
+#ifdef WITH_CAAM_SUPPORT
     rc = init_caam_env();
     if (rc != 0) {
         TLOGE("CAAM init env failed (%d)!\n", rc);
@@ -207,10 +206,12 @@ int main(void) {
 #endif
 
     /* initialize service providers */
-    hwrng_init_srv_provider();
     hwcrypto_init_srv_provider();
     hwkey_init_srv_provider();
+
+#ifdef WITH_CAAM_SUPPORT
     hwaes_init_srv_provider();
+#endif
 
     TLOGD("enter main event loop\n");
 

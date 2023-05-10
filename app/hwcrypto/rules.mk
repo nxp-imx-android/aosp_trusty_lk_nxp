@@ -28,35 +28,45 @@ CONSTANTS := \
 
 MODULE_SRCS := \
 	$(LOCAL_DIR)/main.c \
-	$(LOCAL_DIR)/hwrng_srv.c \
 	$(LOCAL_DIR)/hwkey_srv.c \
 	$(LOCAL_DIR)/hwcrypto_srv.c \
-	$(LOCAL_DIR)/hwaes_srv.c \
 	$(LOCAL_DIR)/hwkey_srv_provider.c \
-	$(LOCAL_DIR)/hwrng_srv_provider.c \
 	$(LOCAL_DIR)/hwcrypto_srv_provider.c \
-	$(LOCAL_DIR)/hwaes_srv_provider.c \
-	$(LOCAL_DIR)/caam.c \
 
-MODULE_INCLUDES := \
-	$(LOCAL_DIR) \
-	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include \
+ifeq (true,$(call TOBOOL,$(WITH_CAAM_SUPPORT)))
+MODULE_DEFINES += \
+        WITH_CAAM_SUPPORT=1
+
+MODULE_SRCS += \
+	$(LOCAL_DIR)/caam.c \
+	$(LOCAL_DIR)/hwaes_srv.c \
+	$(LOCAL_DIR)/hwaes_srv_provider.c
+
+MODULE_INCLUDES += \
 	trusty/user/base/lib/hwaes/srv/include
 
-MODULE_LIBRARY_DEPS := \
+MODULE_LIBRARY_DEPS += \
 	trusty/user/base/lib/hwaes/srv \
+	trusty/user/base/interface/hwaes
+endif
+
+MODULE_INCLUDES += \
+	$(LOCAL_DIR) \
+	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include \
+	$(LOCAL_DIR)/../../platform/imx/common/include \
+
+MODULE_LIBRARY_DEPS += \
 	trusty/user/base/lib/hwkey \
 	trusty/user/base/lib/libc-trusty \
-	trusty/user/base/interface/hwrng \
 	trusty/user/base/interface/hwkey \
 	trusty/user/base/interface/hwcrypto \
-	trusty/user/base/interface/hwaes \
 	trusty/user/base/lib/storage \
 	trusty/user/base/lib/tipc \
+	trusty/user/base/lib/rng \
 	external/boringssl \
 
 TRUSTY_RUNNING_ROLLBACK_VERSION ?= 0
-MODULE_DEFINES := \
+MODULE_DEFINES += \
         TRUSTY_RUNNING_ROLLBACK_VERSION=$(TRUSTY_RUNNING_ROLLBACK_VERSION)
 
 ifneq ($(APPLOADER_SIGN_PUBLIC_KEY_0_FILE),)

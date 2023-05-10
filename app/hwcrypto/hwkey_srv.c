@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define TLOG_TAG "hwkey_srv"
+
 #include <assert.h>
 #include <lk/compiler.h>
 #include <lk/list.h>
@@ -30,12 +32,11 @@
 
 #include "common.h"
 #include "hwkey_srv_priv.h"
-#include "hwrng_srv_priv.h"
 #include <openssl/mem.h>
 
-#define TLOG_TAG "hwkey_srv"
 #include <trusty_log.h>
 #include <lib/tipc/tipc.h>
+#include <lib/rng/trusty_rng.h>
 
 #define HWKEY_MAX_MSG_SIZE 2048
 
@@ -674,7 +675,7 @@ uint32_t get_key_handle(const struct hwkey_keyslot* slot,
      */
     uint8_t random_buf[HWKEY_OPAQUE_HANDLE_SIZE + 2];
     while (1) {
-        int rc = hwrng_dev_get_rng_data(random_buf, sizeof(random_buf));
+        int rc = trusty_rng_secure_rand(random_buf, sizeof(random_buf));
         if (rc != NO_ERROR) {
             /* Don't leave an empty entry if we couldn't generate a token */
             delete_opaque_handle(entry);

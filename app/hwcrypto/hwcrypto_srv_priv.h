@@ -61,10 +61,8 @@ void hwcrypto_init_srv_provider(void);
 int hwcrypto_start_service(void);
 int calculate_hash(uint32_t in_paddr, uint32_t in_len,
                    uint32_t out_paddr, enum hash_algo algo);
-int caam_encap_blob(uint32_t plain_pa, uint32_t size,
-                    uint32_t blob_pa);
-int gen_rng(uint32_t buf, uint32_t len);
-
+int encap_blob(uint32_t plain_pa, uint32_t size,
+               uint32_t blob_pa);
 int gen_bkek(uint32_t buf, uint32_t len);
 
 __END_CDECLS
