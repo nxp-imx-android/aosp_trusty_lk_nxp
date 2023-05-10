@@ -39,6 +39,7 @@
 #include <lib/storage/storage.h>
 
 #include <trusty_log.h>
+#include "ele.h"
 
 static uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
@@ -99,6 +100,11 @@ uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
 
     caam_aes_op(mppk, 16, enc, out, size, false);
 
+    return 0;
+}
+#else
+uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
+    //TODO add ELE implemetation
     return 0;
 }
 #endif
@@ -416,6 +422,16 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
     *klen = RPMB_SS_AUTH_KEY_SIZE;
 
     return HWKEY_NO_ERROR;
+#elif WITH_ELE_SUPPORT
+    assert(kbuf_len >= RPMB_SS_AUTH_KEY_SIZE);
+
+    if (generate_ele_rpmb_key(kbuf, klen)) {
+        memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    } else {
+        *klen = RPMB_SS_AUTH_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    }
 #endif
 }
 
@@ -486,6 +502,57 @@ static uint32_t get_huk_key(const struct hwkey_keyslot* slot,
         TLOGE("%s: failed to generate huk!\n", __func__);
         memset(kbuf, 0, HUK_KEY_SIZE);
         return HWKEY_ERR_GENERIC;
+    }
+}
+#else
+/*
+ * Fetch manufacture production key
+ */
+static uint32_t get_mppub_key(const struct hwkey_keyslot* slot,
+                                     uint8_t* kbuf,
+                                     size_t kbuf_len,
+                                     size_t* klen) {
+    //TODO add ELE implemetation
+    return HWKEY_NO_ERROR;
+}
+
+/*
+ * Derive the bkek as HBK
+ */
+static uint32_t get_hbk_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    uint32_t res;
+    assert(kbuf_len >= HBK_KEY_SIZE);
+
+    res = get_ele_derived_key(kbuf, HUK_KEY_SIZE, skeymod_hbk, sizeof(skeymod_hbk));
+    if (res) {
+        memset(kbuf, 0, HUK_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    } else {
+        *klen = HBK_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    }
+}
+
+/*
+ * Derive the bkek as HUK
+ */
+static uint32_t get_huk_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    int res;
+    assert(kbuf_len >= HUK_KEY_SIZE);
+
+    res = generate_ele_rpmb_key(kbuf, klen);
+    if (res) {
+        memset(kbuf, 0, HUK_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    } else {
+        *klen = HUK_KEY_SIZE;
+        return HWKEY_NO_ERROR;
     }
 }
 #endif
@@ -867,6 +934,25 @@ void hwkey_init_srv_provider(void) {
     unpack_kbox();
 
     generate_rpmb_ss_auth_key();
+
+#else
+    rc = get_ele_huk();
+    if (rc) {
+        TLOGE("Generate huk failed!\n");
+        abort();
+    }
+
+    rc = get_ele_derived_key(kdfv1_key, sizeof(kdfv1_key), skeymod, sizeof(skeymod));
+    if (rc) {
+        TLOGE("Generate kdfv1 fail!\n");
+        abort();
+    }
+
+    rc = get_ele_derived_key(shared_key, sizeof(shared_key), skeymod_hbk, sizeof(skeymod_hbk));
+    if (rc) {
+        TLOGE("Generate shared key fail!\n");
+        abort();
+    }
 #endif
 
     /* install key handlers */

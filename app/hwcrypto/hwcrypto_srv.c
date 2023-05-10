@@ -40,6 +40,10 @@
 #define HWCRYPTO_MAX_PAYLOAD_SIZE 2048
 static bool boot_state_locked = false;
 
+#define RPMB_EMMC_CID_SIZE 16
+bool emmc_cid_provisioned = false;
+uint8_t emmc_cid[RPMB_EMMC_CID_SIZE] __attribute__((aligned(16)));
+
 /**
  * hwcrypto_hash_msg - Serial header for communicating with hwcrypto server
  * @in_addr:  start address of the input buf.
@@ -340,6 +344,33 @@ fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
 }
 
+static int hwcrypto_set_emmc_cid(struct hwcrypto_chan_ctx* ctx,
+                                 struct hwcrypto_msg* hdr,
+                                 uint8_t *req_data,
+                                 size_t req_data_len) {
+    uint32_t cid_size;
+
+    /* sanity check */
+    assert(hdr);
+    assert(req_data);
+
+   /* The cid request should be "data_size + data" */
+    cid_size = *((uint32_t *)req_data);
+    if (cid_size != RPMB_EMMC_CID_SIZE) {
+        TLOGE("wrong input dek size!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+
+        goto exit;
+    }
+    memcpy(emmc_cid, req_data + sizeof(cid_size), RPMB_EMMC_CID_SIZE);
+
+    emmc_cid_provisioned = true;
+    hdr->status = HWCRYPTO_ERROR_NONE;
+
+exit:
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
 #ifdef WITH_CAAM_SUPPORT
 static int hwcrypto_gen_dek_blob(struct hwcrypto_chan_ctx* ctx,
                                  struct hwcrypto_msg* hdr,
@@ -449,6 +480,10 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         rc = hwcrypto_gen_dek_blob(ctx, &hdr, req_data, req_data_len);
         break;
 #endif
+
+    case HWCRYPTO_SET_EMMC_CID:
+        rc = hwcrypto_set_emmc_cid(ctx, &hdr, req_data, req_data_len);
+        break;
 
     default:
         TLOGE("Unsupported request: %d\n", (int)hdr.cmd);
