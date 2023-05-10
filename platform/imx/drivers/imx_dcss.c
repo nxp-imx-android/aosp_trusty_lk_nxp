@@ -34,6 +34,16 @@
 #define SMC_IMX_DCSS_IRQ_ECHO SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 6)
 #define SMC_IMX_DCSS_RELEASE_BUFFER SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 7)
 #define SMC_IMX_DCSS_GET_DIS_ULC SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 8)
+#define SMC_INIT_DISPLAY_PARAM SMC_FASTCALL_NR(SMC_ENTITY_IMX_DCSS_OPT, 9)
+
+#define   LRC_X_POS                             0
+#define   LRC_Y_POS                             16
+#define   SYNC_START_POS                        0
+#define   SYNC_END_POS                          16
+#define   ULC_X_POS                             0
+#define   ULC_Y_POS                             16
+#define   BIT(n)                                (1 << n )
+#define   SYNC_POL                              BIT(31)
 
 static bool tee_ctrl_dcss = false;
 static uint32_t last_tee_fb_addr = 0x0;
@@ -68,6 +78,7 @@ static u16 dcss_ctxld_ctx_size[3] = {
 static u32 g_curr_ctx = 0;
 
 static struct secureui_params secure_ui_param = {0,0,1920,1080};
+static struct display_mode_param display_param;
 static struct dtg_dis_ulc dis_ulc = {0xbf, 0x2c}; // when crtc mode change, the param will be change,
                                                   // normal the para only initialize once.
 //Prevents Secure Memory from being written to the following registers in Secure mode.
@@ -163,8 +174,8 @@ static void init_dtg_ch1_regs() {
 
     p_ulc_x = dis_ulc.dis_ulc_x + secure_ui_param.x;
     p_ulc_y = dis_ulc.dis_ulc_y + secure_ui_param.y;
-    p_lrc_x = p_ulc_x + secure_ui_param.w;
-    p_lrc_y = p_ulc_y + secure_ui_param.h;
+    p_lrc_x = p_ulc_x + display_param.hactive;
+    p_lrc_y = p_ulc_y + display_param.vactive;
 
     imx_init_secureui(CTX_DB, ((p_ulc_y << TC_Y_POS) | p_ulc_x), 0x00020010);
     imx_init_secureui(CTX_DB, ((p_lrc_y << TC_Y_POS) | p_lrc_x), 0x00020014);
@@ -190,18 +201,25 @@ static void init_scaler_ch1_regs() {
     imx_init_secureui(CTX_SB_HP, 0x2, 0x0001c014);
 
     u32 scale_param = (((secure_ui_param.h -1) << 16) | (secure_ui_param.w - 1));
+    u32 scale_param_dst = (((display_param.vactive -1) << 16) | (display_param.hactive - 1));
+
+    uint32_t l_vinc = ((secure_ui_param.h << 13) + (display_param.vactive >> 1)) / display_param.vactive;
+    uint32_t c_vinc = ((secure_ui_param.h << 13) + (display_param.vactive >> 1)) / display_param.vactive;
+    uint32_t l_hinc = ((secure_ui_param.w << 13) + (display_param.hactive >> 1)) / display_param.hactive;
+    uint32_t c_hinc = ((secure_ui_param.w << 13) + (display_param.hactive >> 1)) / display_param.hactive;
+
     imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c018);
     imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c01c);
-    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c020);
-    imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c024);
+    imx_init_secureui(CTX_SB_HP, scale_param_dst, 0x0001c020);
+    imx_init_secureui(CTX_SB_HP, scale_param_dst, 0x0001c024);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c048);
-    imx_init_secureui(CTX_SB_HP, 0x2000, 0x0001c04c);
+    imx_init_secureui(CTX_SB_HP, l_vinc, 0x0001c04c);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c050);
-    imx_init_secureui(CTX_SB_HP, 0x2000, 0x0001c054);
+    imx_init_secureui(CTX_SB_HP, l_hinc, 0x0001c054);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c058);
-    imx_init_secureui(CTX_SB_HP, 0x2000, 0x0001c05c);
+    imx_init_secureui(CTX_SB_HP, c_vinc, 0x0001c05c);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c060);
-    imx_init_secureui(CTX_SB_HP, 0x2000, 0x0001c064);
+    imx_init_secureui(CTX_SB_HP, c_hinc, 0x0001c064);
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001c080);
 }
 static void init_hdr10_ch1_regs() {
@@ -274,12 +292,39 @@ static void init_hdr10_ch1_regs() {
     imx_init_secureui(CTX_SB_HP, 0x0, 0x00003878);
 }
 static void init_ss_regs() {
+    uint16_t lrc_x, lrc_y;
+    uint16_t hsync_start, hsync_end;
+    uint16_t vsync_start, vsync_end;
+    uint16_t de_ulc_x, de_ulc_y;
+    uint16_t de_lrc_x, de_lrc_y;
     imx_init_secureui(CTX_SB_HP, 0x1, 0x0001b000);
-    imx_init_secureui(CTX_SB_HP, 0x4640897, 0x0001b010);
-    imx_init_secureui(CTX_SB_HP, 0x802b0897, 0x0001b020);
-    imx_init_secureui(CTX_SB_HP, 0x80080003, 0x0001b030);
-    imx_init_secureui(CTX_SB_HP, 0x802d00bf, 0x0001b040);
-    imx_init_secureui(CTX_SB_HP, 0x464083f, 0x0001b050);
+    lrc_x = display_param.hfront_porch + display_param.hback_porch + display_param.hsync_len +
+            display_param.hactive - 1;
+    lrc_y = display_param.vfront_porch + display_param.vback_porch + display_param.vsync_len +
+            display_param.vactive - 1;
+    imx_init_secureui(CTX_SB_HP, (lrc_y << LRC_Y_POS) | lrc_x, 0x0001b010);
+
+    hsync_start = display_param.hfront_porch + display_param.hback_porch + display_param.hsync_len +
+                  display_param.hactive - 1;
+    hsync_end = display_param.hsync_len - 1;
+    imx_init_secureui(CTX_SB_HP, (display_param.phsync ? SYNC_POL : 0) |
+                      ((uint32_t)hsync_end << SYNC_END_POS) | hsync_start, 0x0001b020);
+
+    vsync_start = display_param.vfront_porch - 1;
+    vsync_end = display_param.vfront_porch + display_param.vsync_len - 1;
+    imx_init_secureui(CTX_SB_HP, (display_param.pvsync ? SYNC_POL : 0) |
+                      ((uint32_t)vsync_end << SYNC_END_POS) | vsync_start , 0x0001b030);
+
+    de_ulc_x = display_param.hsync_len + display_param.hback_porch - 1;
+    de_ulc_y = display_param.vsync_len + display_param.vfront_porch + display_param.vback_porch;
+    imx_init_secureui(CTX_SB_HP, SYNC_POL | ((uint32_t)de_ulc_y << ULC_Y_POS) | de_ulc_x, 0x0001b040);
+
+
+    de_lrc_x = display_param.hsync_len + display_param.hback_porch + display_param.hactive - 1;
+    de_lrc_y = display_param.vsync_len + display_param.vfront_porch + display_param.vback_porch +
+               display_param.vactive - 1;
+    imx_init_secureui(CTX_SB_HP, (de_lrc_y << LRC_Y_POS) | de_lrc_x, 0x0001b050);
+
     imx_init_secureui(CTX_SB_HP, 0x0, 0x0001b060);
     imx_init_secureui(CTX_SB_HP, 0x41614161, 0x0001b070);
     imx_init_secureui(CTX_SB_HP, 0x3ff0000, 0x0001b080);
@@ -615,6 +660,30 @@ static int imx_linux_dcss_get_dis_ulc(struct smc32_args* args) {
     return 0;
 }
 
+static int imx_init_display_params(struct smc32_args* args) {
+    uint16_t opt = args->params[2] & 0xffffff;
+    if (opt == 0) {
+        /* horizontal */
+        display_param.hactive = args->params[0];
+        display_param.hfront_porch = args->params[1] & 0xffff;
+        display_param.hback_porch = (args->params[1] & 0xffff0000) >> 16;
+        display_param.hsync_len = (args->params[2] & 0xffff0000) >> 16;
+    } else if (opt == 1) {
+        /* vertical */
+        display_param.vactive = args->params[0];
+        display_param.vfront_porch = args->params[1] & 0xffff;
+        display_param.vback_porch = (args->params[1] & 0xffff0000) >> 16;
+        display_param.vsync_len = (args->params[2] & 0xffff0000) >> 16;
+    } else if (opt == 2) {
+        display_param.phsync = args->params[0];
+        display_param.pvsync = args->params[1];
+    } else {
+        printf("init display mode not match\n");
+        return -1;
+    }
+    return 0;
+}
+
 static long imx_dcss_fastcall(struct smc32_args* args) {
     switch (args->smc_nr) {
         case SMC_IMX_DCSS_ECHO:
@@ -635,6 +704,8 @@ static long imx_dcss_fastcall(struct smc32_args* args) {
             return imx_linux_dcss_release_buffer();
         case SMC_IMX_DCSS_GET_DIS_ULC:
             return imx_linux_dcss_get_dis_ulc(args);
+        case SMC_INIT_DISPLAY_PARAM:
+            return imx_init_display_params(args);
     }
     return 0;
 }
