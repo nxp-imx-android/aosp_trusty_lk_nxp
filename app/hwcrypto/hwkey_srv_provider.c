@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#define TLOG_TAG "hwkey_srv_provider"
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -36,7 +38,6 @@
 #include "hwkey_srv_priv.h"
 #include <lib/storage/storage.h>
 
-#define TLOG_TAG "hwkey_caam"
 #include <trusty_log.h>
 
 static uint8_t skeymod[16] __attribute__((aligned(16))) = {
@@ -91,6 +92,7 @@ static uint8_t shared_key[32] __attribute__((aligned(32)));
 // TODO read this version from bootloader rollback index
 #define TRUSTY_COMMITTED_ROLLBACK_VERSION 0
 
+#ifdef WITH_CAAM_SUPPORT
 uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
     DECLARE_SG_SAFE_BUF(mppk, 64);
     caam_gen_mppubk((uint32_t)(intptr_t)mppk);
@@ -99,6 +101,7 @@ uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out) {
 
     return 0;
 }
+#endif
 
 /*
  * Derive key V1 - HKDF based key derive.
@@ -386,11 +389,13 @@ err:
     return rc;
 }
 /* Secure storage service app uuid */
-static const uuid_t ss_uuid = SECURE_STORAGE_SERVER_APP_UUID;
+#ifdef WITH_CAAM_SUPPORT
 static size_t rpmb_keyblob_len;
 static uint8_t rpmb_keyblob[RPMBKEY_LEN];
-static bool rpmb_keyslot_valid = true;
 static uint8_t key_buf[RPMB_SS_AUTH_KEY_SIZE];
+static bool rpmb_keyslot_valid = true;
+#endif
+static const uuid_t ss_uuid = SECURE_STORAGE_SERVER_APP_UUID;
 
 /*
  * Fetch RPMB Secure Storage Authentication key
@@ -403,7 +408,8 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
     memset(kbuf, 0, RPMB_SS_AUTH_KEY_SIZE);
     *klen = RPMB_SS_AUTH_KEY_SIZE;
     return HWKEY_NO_ERROR;
-#else
+#elif WITH_CAAM_SUPPORT
+    // the rpmb key has been generated in key_buf, we just use it
     assert(kbuf_len >= RPMB_SS_AUTH_KEY_SIZE);
 
     memcpy(kbuf, key_buf, RPMB_SS_AUTH_KEY_SIZE);
@@ -413,6 +419,7 @@ static uint32_t get_rpmb_ss_auth_key(const struct hwkey_keyslot* slot,
 #endif
 }
 
+#ifdef WITH_CAAM_SUPPORT
 /*
  * Fetch manufacture production key
  */
@@ -481,6 +488,7 @@ static uint32_t get_huk_key(const struct hwkey_keyslot* slot,
         return HWKEY_ERR_GENERIC;
     }
 }
+#endif
 
 static uint32_t get_kak_key(const struct hwkey_keyslot* slot,
                             uint8_t* kbuf,
@@ -782,6 +790,7 @@ static const struct hwkey_keyslot _keys[] = {
 #endif
 };
 
+#ifdef WITH_CAAM_SUPPORT
 static void unpack_kbox(void) {
     struct keyslot_package* kbox = malloc(sizeof(struct keyslot_package));
 
@@ -830,16 +839,17 @@ static void generate_rpmb_ss_auth_key(void) {
         }
     }
 }
+#endif
 
 /*
  *  Initialize Fake HWKEY service provider
  */
 void hwkey_init_srv_provider(void) {
     int rc;
-#ifndef SOFTWARE_CRYPTO
 
     TLOGD("Init HWKEY service provider\n");
 
+#ifdef WITH_CAAM_SUPPORT
     /* generate kdfv1 root, it should never fail */
     rc = caam_gen_kdfv1_root_key(kdfv1_key, sizeof(kdfv1_key));
     if (rc != CAAM_SUCCESS) {
@@ -857,8 +867,8 @@ void hwkey_init_srv_provider(void) {
     unpack_kbox();
 
     generate_rpmb_ss_auth_key();
-
 #endif
+
     /* install key handlers */
     hwkey_install_keys(_keys, countof(_keys));
 

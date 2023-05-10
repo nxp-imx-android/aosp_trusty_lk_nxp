@@ -16,6 +16,8 @@
  * Copyright 2018 NXP
  */
 
+#define TLOG_TAG "hwcrypto_srv"
+
 #include <assert.h>
 #include <lk/compiler.h>
 #include <stddef.h>
@@ -33,8 +35,7 @@
 #include <nxp_hwcrypto_uuid_consts.h>
 #include <lib/storage/storage.h>
 #include <trusty_log.h>
-
-#define TLOG_TAG "hwcrypto_srv"
+#include <lib/rng/trusty_rng.h>
 
 #define HWCRYPTO_MAX_PAYLOAD_SIZE 2048
 static bool boot_state_locked = false;
@@ -119,7 +120,7 @@ static int hwcrypto_hash_process(struct hwcrypto_chan_ctx* ctx,
 	goto fail;
     }
 
-    /* canculate hash with caam */
+    /* canculate hash */
     hdr->status = calculate_hash(msg->in_addr, msg->in_len, msg->out_addr, msg->algo);
 
 fail:
@@ -149,11 +150,11 @@ static int hwcrypto_encap_blob(struct hwcrypto_chan_ctx* ctx,
 	goto fail;
     }
 
-    /* use caam to encapsulate the text located in msg->plain_pa with
-     * length 'size', generated blob will be stored to msg->blob_pa.
+    /* encapsulate the text located in msg->plain_pa with length
+     * 'size', generated blob will be stored to msg->blob_pa.
      */
-    hdr->status = caam_encap_blob(msg->plain_pa,
-                                  msg->plain_size, msg->blob_pa);
+    hdr->status = encap_blob(msg->plain_pa,
+                             msg->plain_size, msg->blob_pa);
 
 fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
@@ -182,9 +183,9 @@ static int hwcrypto_gen_rng(struct hwcrypto_chan_ctx* ctx,
         goto fail;
     }
 
-    /* use caam to generate 'len' length rng and put it into 'buf'.
+    /* generate 'len' length rng and put it into 'buf'.
      */
-    hdr->status = gen_rng(msg->buf, msg->len);
+    hdr->status = trusty_rng_secure_rand((uint8_t *)(ulong)(msg->buf), msg->len);
 
 fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
@@ -213,7 +214,7 @@ static int hwcrypto_gen_bkek(struct hwcrypto_chan_ctx* ctx,
         goto fail;
     }
 
-    /* use caam to generate 'len' length rng and put it into 'buf'.
+    /* generate 'len' length rng and put it into 'buf'.
      */
 #if ENABLE_BKEK_GENERATION
     hdr->status = gen_bkek(msg->buf, msg->len);
@@ -339,6 +340,7 @@ fail:
     return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
 }
 
+#ifdef WITH_CAAM_SUPPORT
 static int hwcrypto_gen_dek_blob(struct hwcrypto_chan_ctx* ctx,
                                  struct hwcrypto_msg* hdr,
                                  uint8_t *req_data,
@@ -383,6 +385,7 @@ exit:
         free(blob);
     return rc;
 }
+#endif
 
 /*
  *  Read and queue HWCRYPTO request message
@@ -441,9 +444,11 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         rc = hwcrypto_provision_wv_key_enc(ctx, &hdr, req_data, req_data_len);
         break;
 
+#ifdef WITH_CAAM_SUPPORT
     case HWCRYPTO_GEN_DEK_BLOB:
         rc = hwcrypto_gen_dek_blob(ctx, &hdr, req_data, req_data_len);
         break;
+#endif
 
     default:
         TLOGE("Unsupported request: %d\n", (int)hdr.cmd);

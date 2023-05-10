@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2016-2017 The Android Open Source Project
- * Copyright 2018 NXP
+ * Copyright 2023 NXP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,14 +26,15 @@
 #include <interface/hwcrypto/hwcrypto.h>
 #include <trusty_log.h>
 
-#define TLOG_TAG "hwcrypto_caam"
+#define TLOG_TAG "hwcrypto_srv_provider"
 
+#ifdef WITH_CAAM_SUPPORT
 static uint8_t skeymod[16] __attribute__((aligned(16))) = {
         0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
         0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
 
-int caam_encap_blob(uint32_t plain_pa, uint32_t size,
-                    uint32_t blob_pa)
+int encap_blob(uint32_t plain_pa, uint32_t size,
+               uint32_t blob_pa)
 {
     int ret;
     uint32_t kmod_pa;
@@ -65,13 +66,6 @@ int calculate_hash(uint32_t in_paddr, uint32_t in_len,
 	    return HWCRYPTO_ERROR_NONE;
 }
 
-int gen_rng(uint32_t buf, uint32_t len) {
-    if (caam_hwrng_pa(buf, len) != 0)
-        return HWCRYPTO_ERROR_INTERNAL;
-    else
-        return HWCRYPTO_ERROR_NONE;
-}
-
 int gen_bkek(uint32_t buf, uint32_t len) {
     int ret;
     uint32_t kmod_pa;
@@ -91,6 +85,7 @@ int gen_bkek(uint32_t buf, uint32_t len) {
     else
         return HWCRYPTO_ERROR_NONE;
 }
+#endif
 
 void hwcrypto_init_srv_provider(void) {
     int rc;
