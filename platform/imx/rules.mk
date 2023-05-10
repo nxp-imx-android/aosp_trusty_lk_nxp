@@ -129,6 +129,12 @@ MODULE_DEFINES += \
 	WITH_VIRT_TIMER_INIT=1
 endif
 
+ifeq (true,$(call TOBOOL,$(WITH_ELE_SUPPORT)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/ele/imx_ele.c \
+	$(LOCAL_DIR)/drivers/ele/imx_mu.c
+endif
+
 MODULE_DEPS += \
 	dev/interrupt/arm_gic \
 	dev/timer/arm_generic \
