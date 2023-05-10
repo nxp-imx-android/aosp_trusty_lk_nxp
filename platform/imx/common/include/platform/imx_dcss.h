@@ -84,5 +84,20 @@ struct dtg_dis_ulc {
     uint32_t dis_ulc_y;
 };
 
+struct display_mode_param {
+    uint32_t hactive;
+    uint32_t hfront_porch;
+    uint32_t hback_porch;
+    uint32_t hsync_len;
+
+    uint32_t vactive;
+    uint32_t vfront_porch;
+    uint32_t vback_porch;
+    uint32_t vsync_len;
+
+    uint8_t phsync;
+    uint8_t pvsync;
+};
+
 #endif
 
