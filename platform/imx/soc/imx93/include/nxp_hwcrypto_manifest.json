@@ -1,0 +1,5 @@
+{
+    "uuid": "IMX_HWCRYPTO_UUID",
+    "min_heap": 40960,
+    "min_stack": 81920
+}
