@@ -127,6 +127,8 @@ static long imx_linux_lcdif_reg(struct smc32_args* args) {
             case HW_EPDC_PIGEON_12_1:
             case HW_EPDC_PIGEON_12_2:
             case LCDIF_TRANSFER_COUNT:
+            case LCDIF_CUR_BUF:
+            case LCDIF_TIMING:
             case LCDIF_VDCTRL0:
             case LCDIF_VDCTRL1:
             case LCDIF_VDCTRL2:
