@@ -172,27 +172,48 @@ static int hwcrypto_gen_rng(struct hwcrypto_chan_ctx* ctx,
                                uint8_t *req_data,
                                size_t req_data_len)
 {
+    uint8_t *buf = NULL;
+    uint32_t len = 0;
+    int rc = 0;
+
     assert(hdr);
     assert(req_data);
 
     /* sanity check the req length */
-    if (req_data_len < sizeof(hwcrypto_rng_msg)) {
+    if (req_data_len < sizeof(hwcrypto_rng_req)) {
         hdr->status = HWCRYPTO_ERROR_INVALID;
-        goto fail;
+        goto exit;
     }
 
-    hwcrypto_rng_msg *msg = (hwcrypto_rng_msg *)req_data;
-    if (msg->buf == 0) {
+    hwcrypto_rng_req *msg = (hwcrypto_rng_req *)req_data;
+    if (msg->len == 0) {
+        TLOGE("Invalid length for RNG request!\n");
         hdr->status = HWCRYPTO_ERROR_INVALID;
-        goto fail;
+        goto exit;
     }
 
+    buf = malloc(msg->len);
+    if (!buf) {
+        TLOGE("allocate memory failed!\n");
+        hdr->status = HWCRYPTO_ERROR_INVALID;
+        goto exit;
+    }
     /* generate 'len' length rng and put it into 'buf'.
      */
-    hdr->status = trusty_rng_secure_rand((uint8_t *)(ulong)(msg->buf), msg->len);
+    if (trusty_rng_secure_rand(buf, msg->len)) {
+        TLOGE("failed to generate RNG!\n");
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+        goto exit;
+    }
+    len = msg->len;
+    hdr->status = HWCRYPTO_ERROR_NONE;
 
-fail:
-    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+exit:
+    rc = hwcrypto_send_rsp(ctx, hdr, buf, len);
+
+    if (buf)
+        free(buf);
+    return rc;
 }
 
 /*
