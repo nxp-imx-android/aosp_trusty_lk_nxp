@@ -6,13 +6,21 @@
 #include <stdio.h>
 #include <string.h>
 #include <lk/init.h>
-#include <kernel/mutex.h>
 #include <arch/ops.h>
 #include <imx-regs.h>
 #include <kernel/vm.h>
 #include <kernel/mutex.h>
+#include <kernel/usercopy.h>
+#include <lib/trusty/sys_fd.h>
+#include <err.h>
 #include <reg.h>
 #include "imx_caam.h"
+#include <platform/imx_rng.h>
+#include <platform/imx_caam.h>
+
+#define DRIVER_FD SYSCALL_PLATFORM_FD_CAAM
+#define CHECK_FD(x) \
+        do { if(x!=DRIVER_FD) return ERR_BAD_HANDLE; } while (0)
 
 struct caam_job_rings {
     uint32_t in[1];  /* single entry input ring */
@@ -615,7 +623,7 @@ void imx_trusty_rand_add_entropy(const void *buf, size_t len) {
 
 static struct mutex lock = MUTEX_INITIAL_VALUE(lock);
 
-int imx_rand(void) {
+static int imx_rand(bool enable_pr) {
     int rand, *rand_buf;
     paddr_t ptr, entropy_pa;
 
@@ -630,7 +638,10 @@ int imx_rand(void) {
     g_job->dsc[0] = 0xB0800006;
     g_job->dsc[1] = 0x12200020;
     g_job->dsc[2] = (uint32_t)entropy_pa;
-    g_job->dsc[3] = 0x82500800;
+    if (enable_pr)
+        g_job->dsc[3] = 0x82500802;
+    else
+        g_job->dsc[3] = 0x82500800;
     g_job->dsc[4] = 0x60340000 | (0x0000ffff & sizeof(int));
     g_job->dsc[5] = (uint32_t)ptr;
     g_job->dsc_used = 6;
@@ -653,7 +664,7 @@ int imx_rand(void) {
 
 void platform_random_get_bytes(uint8_t *buf, size_t len) {
     while (len) {
-        uint32_t val = (uint32_t)imx_rand();
+        uint32_t val = (uint32_t)imx_rand(false);
         size_t todo = len;
         for (size_t i = 0; i < sizeof(val) && i < todo; i++, len--) {
             *buf++ = val & 0xff;
@@ -661,6 +672,50 @@ void platform_random_get_bytes(uint8_t *buf, size_t len) {
         }
    }
 };
+
+static void caam_derive_pr_rng(uint8_t* out, size_t requested) {
+    while (requested) {
+        uint32_t val = (uint32_t)imx_rand(true);
+        size_t todo = requested;
+        for (size_t i = 0; i < sizeof(val) && i < todo; i++, requested--) {
+            *out++ = val & 0xff;
+            val >>= 8;
+        }
+    }
+}
+
+static int derive_pr_rng(user_addr_t user_ptr) {
+    uint8_t *buf = NULL;
+    int ret = 0;
+    struct pr_rng_msg msg;
+
+    ret = copy_from_user(&msg, user_ptr, sizeof(struct pr_rng_msg));
+    if (unlikely(ret != 0)) {
+        printf("%s: failed to copy data from user!\n", __func__ );
+        return -1;
+    }
+
+    buf = malloc(msg.len);
+    if (!buf) {
+        printf("%s: failed to malloc memory!\n", __func__);
+        return -1;
+    }
+
+    caam_derive_pr_rng(buf, msg.len);
+    ret = copy_to_user((user_addr_t)(msg.buf), buf, msg.len);
+    if (unlikely(ret != 0)) {
+        printf("%s: failed to copy data to user!\n", __func__ );
+        ret = -1;
+        goto exit;
+    }
+    ret = 0;
+
+exit:
+    if (buf)
+        free(buf);
+
+    return ret;
+}
 
 #ifdef MACH_IMX8ULP
 static bool caam_resume_flag = true;
@@ -698,3 +753,22 @@ LK_INIT_HOOK_FLAGS(imx_caam_suspend_cpu, imx_caam_suspend_cpu, LK_INIT_LEVEL_KER
 #endif
 
 LK_INIT_HOOK(imx_caam, init_caam_env, LK_INIT_LEVEL_KERNEL - 1);
+
+static int32_t sys_caam_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
+    CHECK_FD(fd);
+    switch (cmd) {
+        case CAAM_DERIVE_PR_RNG:
+            return derive_pr_rng(user_ptr);
+        default:
+            printf("%s: invalid caam syscall!\n", __func__);
+            return -1;
+    }
+}
+static const struct sys_fd_ops caam_ops = {
+    .ioctl = sys_caam_ioctl,
+};
+void platform_init_caam(uint level) {
+    install_sys_fd_handler(SYSCALL_PLATFORM_FD_CAAM, &caam_ops);
+}
+
+LK_INIT_HOOK(caam_dev_init, platform_init_caam, LK_INIT_LEVEL_KERNEL - 1);
