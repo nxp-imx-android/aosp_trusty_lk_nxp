@@ -860,6 +860,10 @@ static const struct hwkey_keyslot _keys[] = {
 #ifdef WITH_CAAM_SUPPORT
 static void unpack_kbox(void) {
     struct keyslot_package* kbox = malloc(sizeof(struct keyslot_package));
+    if (!kbox) {
+        TLOGE("Failed to allocate keybox memory!\n");
+        abort();
+    }
 
     caam_get_keybox(kbox);
     if (strncmp(kbox->magic, KEYPACK_MAGIC, 4)) {
