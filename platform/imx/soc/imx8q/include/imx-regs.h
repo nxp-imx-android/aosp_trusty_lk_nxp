@@ -81,4 +81,19 @@
 #define SC_IPC_BASE    0x5d1f0000
 #define SC_IPC_SIZE    0x10000
 
+#if IMX8QM == 1
+
+#define MACH_IMX8QM
+/* secure heap address and size */
+#define SECURE_HEAP_BASE  0xE0000000
+#define SECURE_HEAP_SIZE  0x10000000
+
+/* vpu firmware boot address and size */
+#define VPU_FIRMWARE_BASE 0x96000000
+#define VPU_FIRMWARE_SIZE 0x02000000
+
+#else
+#define MACH_IMX8QXP
+#endif
+
 #endif

@@ -59,6 +59,14 @@ const static struct uuid confirmationui_ta_uuid = {
     {0xb0, 0x86, 0xdf, 0x0f, 0x6c, 0x23, 0x3c, 0x1b},
 };
 
+// 08d3ed40-bde2-448c-a91d-75f1989c57ef
+const static struct uuid widevine_ta_uuid = {
+    0x08d3ed40,
+    0xbde2,
+    0x448c,
+    {0xa9, 0x1d, 0x75, 0xf1, 0x98, 0x9c, 0x57, 0xef},
+};
+
 
 static bool check_uuid_equal(const struct uuid* a, const struct uuid* b) {
     return memcmp(a, b, sizeof(struct uuid)) == 0;
@@ -68,11 +76,12 @@ static const struct uuid *allow_uuids[] = {
     &secure_fb_impl_ta_uuid,
     &hwsecure_client_ta_uuid,
     &confirmationui_ta_uuid,
+    &widevine_ta_uuid,
 };
 
 static struct tipc_port_acl acl = {
     .flags = IPC_PORT_ALLOW_TA_CONNECT,
-    .uuid_num = 3,
+    .uuid_num = 4,
     .uuids = allow_uuids,
 };
 
@@ -236,6 +245,15 @@ static int hwsecure_on_message(const struct tipc_port* port,
                     TLOGE("UUID doesn't match!\n");
                     return ERR_GENERIC;
                 }
+#if defined(MACH_IMX8QM)
+        case HWSECURE_WV_SET_WIDEVINE_SECURE_PIPELINE:
+                if (check_uuid_equal(&(ptr->peer), &widevine_ta_uuid)) {
+                    return imx8qm_widevine_secure_pipeline();
+                } else {
+                    TLOGE("UUID doesn't match!\n");
+                    return ERR_GENERIC;
+                }
+#endif
         default:
             return ERR_INVALID_ARGS;
     }
