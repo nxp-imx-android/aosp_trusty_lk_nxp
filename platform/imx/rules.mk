@@ -122,7 +122,9 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/scfw/pm/pm_rpc_clnt.c \
 	$(LOCAL_DIR)/drivers/scfw/rm/rm_rpc_clnt.c \
 	$(LOCAL_DIR)/drivers/scfw/seco/seco_rpc_clnt.c \
-	$(LOCAL_DIR)/drivers/scfw/timer/timer_rpc_clnt.c
+	$(LOCAL_DIR)/drivers/scfw/timer/timer_rpc_clnt.c \
+	$(LOCAL_DIR)/drivers/imx_scu.c
+
 endif
 endif
 
