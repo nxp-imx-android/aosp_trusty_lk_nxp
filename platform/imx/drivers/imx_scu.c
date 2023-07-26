@@ -369,6 +369,26 @@ static int imx_scu_power_set(struct smc32_args* args) {
     }
 }
 
+uint32_t monotonic_time_s(void) {
+    sc_err_t err;
+    uint32_t monotonic_time = 0;
+    uint32_t command = 0xFFFFFFFAU;
+    uint32_t ioctl_err = 0;
+    sc_ipc_t ipc_handle;
+
+    if (sc_ipc_open(&ipc_handle, SC_IPC_BASE) != SC_ERR_NONE) {
+        printf("monotonic_time_s ipc port open error\n");
+        return -1;
+    }
+
+    err = sc_misc_board_ioctl(ipc_handle, &command, &monotonic_time, &ioctl_err);
+    if (err)
+        printf("get srtc failed:%d\n",err);
+
+    sc_ipc_close(ipc_handle);
+    return monotonic_time;
+}
+
 static int imx_scu_dpu_power_set(struct smc32_args* args) {
     bool power_on = args->params[0];
     if (power_on) {
