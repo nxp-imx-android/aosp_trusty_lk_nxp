@@ -129,6 +129,11 @@ GLOBAL_DEFINES += \
 	USE_IMX_MONOTONIC_TIME=1
 endif
 endif
+ifeq (true, $(call TOBOOL,$(WITH_AMPHION_DRIVER)))
+MODULE_SRCS += \
+	$(LOCAL_DIR)/drivers/imx_amphion.c
+endif
+
 
 #include SOC specific rules if they exists
 -include $(LOCAL_DIR)/soc/$(PLATFORM_SOC)/rules.mk

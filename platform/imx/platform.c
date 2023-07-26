@@ -58,6 +58,13 @@ struct mmu_initial_mapping mmu_initial_mappings[] = {
          .size = SOC_REGS_SIZE,
          .flags = MMU_INITIAL_MAPPING_FLAG_DEVICE,
          .name = "soc"},
+#if defined(MACH_IMX8QM)
+        {.phys = VPU_FIRMWARE_BASE,
+         .virt = VPU_FIRMWARE_VIRT,
+         .size = VPU_FIRMWARE_SIZE,
+         .flags = MMU_INITIAL_MAPPING_FLAG_DEVICE,
+         .name = "vpu_amphion"},
+#endif
         /* null entry to terminate the list */
         {0}};
 
