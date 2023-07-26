@@ -125,6 +125,8 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/scfw/timer/timer_rpc_clnt.c \
 	$(LOCAL_DIR)/drivers/imx_scu.c
 
+GLOBAL_DEFINES += \
+	USE_IMX_MONOTONIC_TIME=1
 endif
 endif
 
