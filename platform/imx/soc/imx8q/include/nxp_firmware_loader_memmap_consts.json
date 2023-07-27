@@ -1,0 +1,24 @@
+{
+    "header": "nxp_memmap_consts.h",
+    "constants":[
+        {
+            "name": "FIRMWARE_BOOT_MMIO_ID",
+            "value": "1",
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "FIRMWARE_BOOT_ADDR",
+            "value": "0x96000000",
+            "type": "int",
+            "unsigned": false
+        },
+        {
+            "name": "FIRMWARE_BOOT_SIZE",
+            "value": "0x2000000",
+            "type": "int",
+            "unsigned": false
+        }
+    ]
+}
+

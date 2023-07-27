@@ -399,12 +399,30 @@ static int imx_scu_dpu_power_set(struct smc32_args* args) {
     }
 }
 
+static int power_on_vpu() {
+    sc_err_t err;
+    sc_ipc_t ipc_handle;
+    if (sc_ipc_open(&ipc_handle, SC_IPC_BASE) != SC_ERR_NONE) {
+        printf("monotonic_time_s ipc port open error\n");
+        return -1;
+    }
+
+    err = sc_pm_set_resource_power_mode(ipc_handle, SC_R_VPU_DEC_0, SC_PM_PW_MODE_ON);
+    if (err)
+        printf("power on vpu decoder core failed: %d\n", err);
+
+    sc_ipc_close(ipc_handle);
+    return err;
+}
+
 static int32_t sys_scu_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
     switch (cmd) {
         case SCU_ALLOC_PART:
             return alloc_part();
         case SCU_MEM_PERMISSION:
             return mem_permission();
+        case SCU_POWER_ON_VPU:
+            return power_on_vpu();
     }
     return 0;
 }

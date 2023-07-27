@@ -24,5 +24,10 @@ struct vpu_ctx {
         uint32_t hdr_buffer_size;
         uint64_t hdr_client_id;
 };
+
+#define SYSCALL_PLATFORM_FD_AMPHION 0x8
+#define AMPHION_CLEAR_BOOT_BUFFER 0x00000001
+#define AMPHION_GET_FIRMWARE_POWER 0x00000002
+
 #endif
 
