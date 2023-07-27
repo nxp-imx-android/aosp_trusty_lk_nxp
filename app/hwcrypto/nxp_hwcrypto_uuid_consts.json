@@ -55,6 +55,11 @@
             "name": "HWBCC_UNITTEST_RUST_APP_UUID",
             "value": "67925337-2c03-49ed-9240-d51b6fea3e30",
             "type": "uuid"
+        },
+        {
+            "name": "FIRMWARE_LOADER_SERVER_UUID",
+            "value": "081ba88f-f1ff-4521-b5a8-a8e9ef173a97",
+            "type": "uuid"
         }
     ]
 }
