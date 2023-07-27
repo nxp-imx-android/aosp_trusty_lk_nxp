@@ -1,0 +1,12 @@
+{
+    "uuid": "081ba88f-f1ff-4521-b5a8-a8e9ef173a97",
+    "min_heap": 1048576,
+    "min_stack": 1048576,
+    "mem_map": [
+        {
+            "id": "FIRMWARE_BOOT_MMIO_ID",
+            "addr": "FIRMWARE_BOOT_ADDR",
+            "size": "FIRMWARE_BOOT_SIZE"
+        }
+    ]
+}

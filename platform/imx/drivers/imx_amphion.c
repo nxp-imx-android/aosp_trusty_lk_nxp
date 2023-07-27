@@ -62,7 +62,7 @@ static long amphion_copy(struct smc32_args* args) {
     uint32_t src_offset = message->src_offset;
     size_t size = message->size;
     paddr_t secure_dst_paddr = vaddr_to_paddr((uint8_t*)secure_stream_buffer + dst_offset);
-    if ((secure_dst_paddr - SECURE_HEAP_BASE) >= SECURE_HEAP_SIZE) {
+    if(((secure_dst_paddr - SECURE_HEAP_BASE) >= SECURE_HEAP_SIZE) || ((secure_dst_paddr - SECURE_HEAP_BASE) < 0)) {
         return -1;
     }
     if (secure_memory_offset != 0x10000000) {
@@ -149,10 +149,11 @@ static int mmap_secure_heap() {
             return ret;
         } else {
             secure_stream_buffer = secure_heap_base;
-	}
+        }
     }
 
     return 0;
+
 }
 
 static int unmap_secure_heap() {
@@ -214,7 +215,22 @@ static u32 vpu_core_regs(struct smc32_args* args) {
 }
 
 static int get_firmware_wfi_state() {
-	return *((uint8_t*)VPU_FIRMWARE_VIRT + 19) == 1;
+    return *((uint8_t*)VPU_FIRMWARE_VIRT + 19) == 1;
+}
+
+static int clear_boot_buffer() {
+    for (u32 i =0; i < 0x800000; i++) {
+        *((uint32_t*)VPU_FIRMWARE_VIRT + i) = 0;
+    }
+    return 0;
+}
+
+static int get_firmware_power_state() {
+    int off = *REG32(VPU_CORE_REGS_BASE + IMX8Q_CSR_CM0Px_CPUWAIT);
+    if (off)
+        return 0;
+    else
+        return 1;
 }
 
 static long amphion_fastcall(struct smc32_args* args) {
@@ -261,11 +277,25 @@ static long amphion_fastcall(struct smc32_args* args) {
     }
 
     if (args->smc_nr == SMC_WV_GET_STATE) {
-	return get_firmware_wfi_state();
+        return get_firmware_wfi_state();
     }
 
     return ret;
 }
+
+static int32_t sys_amphion_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
+    switch (cmd) {
+        case AMPHION_CLEAR_BOOT_BUFFER:
+            return clear_boot_buffer();
+        case AMPHION_GET_FIRMWARE_POWER:
+            return get_firmware_power_state();
+    }
+    return 0;
+}
+
+static const struct sys_fd_ops amphion_ops = {
+    .ioctl = sys_amphion_ioctl,
+};
 
 static struct smc32_entity amphion_entity = {
     .fastcall_handler = amphion_fastcall,
@@ -277,4 +307,10 @@ void amphion_smcall_init(uint level) {
     vctx.hdr_buffer = NULL;
 }
 
+void platform_init_amphion(uint level) {
+    install_sys_fd_handler(SYSCALL_PLATFORM_FD_AMPHION, &amphion_ops);
+}
+
+
 LK_INIT_HOOK(amphion_driver, amphion_smcall_init, LK_INIT_LEVEL_PLATFORM);
+LK_INIT_HOOK(imx_amphion_ioctl, platform_init_amphion, LK_INIT_LEVEL_PLATFORM + 1);
