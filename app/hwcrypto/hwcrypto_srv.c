@@ -439,6 +439,112 @@ exit:
 }
 #endif
 
+static const char* FirmwareSignKeyFilename = "firmware.sign.key";
+static const char* FirmwareEncryptKeyFilename = "firmware.encrypt.key";
+static int write_firmware_key(uint8_t *data, uint32_t data_size, bool sign) {
+    int rc = 0;
+    storage_session_t session;
+    file_handle_t file_handle;
+    storage_off_t file_size = 0;
+
+    if ((data_size == 0) || (data_size > 4096)) {
+        TLOGE("firmware key is invalid\n");
+        return -1;
+    }
+
+    /* write the wv key to secure storage */
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to connect to storage TA: %d!\n", rc);
+        return rc;
+    }
+
+    /* open file in secure storage */
+    if (sign) {
+        rc = storage_open_file(session, &file_handle, FirmwareSignKeyFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    } else {
+        rc = storage_open_file(session, &file_handle, FirmwareEncryptKeyFilename, STORAGE_FILE_OPEN_CREATE, 0);
+    }
+    if (rc < 0) {
+        TLOGE("hwcrypto: failed to open firmware sign=%d key: %d!\n", sign, rc);
+        storage_close_session(session);
+        return rc;
+    }
+
+    /* check if the keybox has been set before */
+    if (storage_get_file_size(file_handle, &file_size) < 0 || file_size != 0) {
+        TLOGE("hwcrypto: failed to get file size or the firmware sign=%d key has been provisioned!\n", sign);
+        storage_close_file(file_handle);
+        storage_close_session(session);
+        return -1;
+    }
+
+    /* now do the write operation */
+    rc = storage_write(file_handle, 0, data, data_size, STORAGE_OP_COMPLETE);
+    storage_close_file(file_handle);
+    storage_close_session(session);
+
+    if (rc < 0 || rc != (int)data_size) {
+        TLOGE("hwcrypto: firmware %s key write failed!\n", (sign? "sign": "encrypt"));
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static int hwcrypto_provision_firmware_sign_key(struct hwcrypto_chan_ctx* ctx,
+                                                struct hwcrypto_msg* hdr,
+                                                uint8_t *req_data,
+                                                size_t req_data_len)
+{
+    uint8_t *data = NULL;
+    uint32_t data_size;
+    int rc = 0;
+
+    /* sanity check */
+    assert(hdr);
+    assert(req_data);
+
+   /* The wv key request should be "data_size + data" */
+    data_size = *((uint32_t *)req_data);
+    data = (uint8_t *)(req_data + sizeof(data_size));
+
+    rc = write_firmware_key(data, data_size, true);
+    if (rc < 0)
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+    else
+        hdr->status = HWCRYPTO_ERROR_NONE;
+
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
+static int hwcrypto_provision_firmware_encrypt_key(struct hwcrypto_chan_ctx* ctx,
+                                                   struct hwcrypto_msg* hdr,
+                                                   uint8_t *req_data,
+                                                   size_t req_data_len)
+{
+    uint8_t *data = NULL;
+    uint32_t data_size;
+    int rc = 0;
+
+    /* sanity check */
+    assert(hdr);
+    assert(req_data);
+
+   /* The wv key request should be "data_size + data" */
+    data_size = *((uint32_t *)req_data);
+    data = (uint8_t *)(req_data + sizeof(data_size));
+
+    rc = write_firmware_key(data, data_size, false);
+    if (rc < 0)
+        hdr->status = HWCRYPTO_ERROR_INTERNAL;
+    else
+        hdr->status = HWCRYPTO_ERROR_NONE;
+
+    return hwcrypto_send_rsp(ctx, hdr, NULL, 0);
+}
+
 /*
  *  Read and queue HWCRYPTO request message
  */
@@ -506,8 +612,15 @@ static int hwcrypto_chan_handle_msg(struct hwcrypto_chan_ctx* ctx) {
         rc = hwcrypto_set_emmc_cid(ctx, &hdr, req_data, req_data_len);
         break;
 
+    case HWCRYPTO_PROVISION_FIRMWARE_SIGN_KEY:
+        rc = hwcrypto_provision_firmware_sign_key(ctx, &hdr, req_data, req_data_len);
+        break;
+
+    case HWCRYPTO_PROVISION_FIRMWARE_ENCRYPT_KEY:
+        rc = hwcrypto_provision_firmware_encrypt_key(ctx, &hdr, req_data, req_data_len);
+        break;
+
     default:
-        TLOGE("Unsupported request: %d\n", (int)hdr.cmd);
         hdr.status = HWCRYPTO_ERROR_INVALID;
         rc = hwcrypto_send_rsp(ctx, &hdr, NULL, 0);
     }

@@ -92,7 +92,8 @@ static const struct hwkey_keyslot* key_slots;
 
 static bool is_opaque_handle(const struct hwkey_keyslot* key_slot) {
     assert(key_slot);
-    return key_slot->handler == get_key_handle;
+    return (key_slot->handler == get_key_handle)
+            || (key_slot->handler == get_firmware_encrypt_key_handle);
 }
 
 static void delete_opaque_handle(struct opaque_handle_node* node) {

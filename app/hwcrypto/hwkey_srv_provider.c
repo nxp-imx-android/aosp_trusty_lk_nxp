@@ -86,6 +86,10 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
 #define HWOEMCRYPTO_WV_KEYBOX_ID "com.android.trusty.hwoemcrypto.wvkeybox"
 static const uuid_t wv_uuid = HWOEMCRYPTO_SERVER_APP_UUID;
 
+#define FIRMWARE_SIGN_KEY_ID "com.android.trusty.firmware_loader.sign.key.0"
+#define FIRMWARE_ENCRYPT_KEY_ID "com.android.trusty.firmware_loader.encrypt.key.0"
+static const uuid_t firmware_loader_uuid = FIRMWARE_LOADER_SERVER_UUID;
+
 static uint8_t kdfv1_key[32] __attribute__((aligned(32)));
 // TODO replace this key as shared key
 static uint8_t shared_key[32] __attribute__((aligned(32)));
@@ -630,6 +634,101 @@ struct apploader_key {
     const unsigned int* key_size_ptr;
 };
 
+/*
+ * Load firmware Loader Sign/encrypt key from secure storage
+ * */
+static const char* FirmwareSignKeyFilename = "firmware.sign.key";
+static const char* FirmwareEncryptKeyFilename = "firmware.encrypt.key";
+unsigned int firmware_loader_encrypt_key_size = 16;
+static uint8_t firmware_encrypt_key[16];
+static struct apploader_key firmware_loader_encrypt_key = {
+        .key_data = firmware_encrypt_key,
+        .key_size_ptr = &firmware_loader_encrypt_key_size,
+};
+
+static uint32_t get_firmware_loader_key(const struct hwkey_keyslot* slot,
+                                        uint8_t* kbuf,
+                                        size_t kbuf_len,
+                                        size_t* klen) {
+    storage_session_t session;
+    file_handle_t file_handle;
+    int rc = 0;
+
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to connect to storage TA!\n");
+        goto fail;
+    }
+
+    /* open file in secure storage */
+    rc = storage_open_file(session, &file_handle, FirmwareSignKeyFilename, 0, 0);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to open keybox!\n");
+        storage_close_session(session);
+        goto fail;
+    }
+
+    /* read the keybox */
+    rc = storage_read(file_handle, 0, kbuf, kbuf_len);
+    storage_close_file(file_handle);
+    storage_close_session(session);
+
+fail:
+    if (rc <= 0) {
+        TLOGE("hwkey: keybox read failed!\n");
+        return HWKEY_ERR_GENERIC;
+    } else {
+        TLOGE("hwkey: keybox read successfully!\n");
+        *klen = rc;
+        return HWKEY_NO_ERROR;
+    }
+}
+
+static uint32_t load_firmware_loader_encrtpt_key(uint8_t* kbuf,
+                                                 size_t kbuf_len) {
+    storage_session_t session;
+    file_handle_t file_handle;
+    int rc = 0;
+
+    /* connect to secure storage TA */
+    rc = storage_open_session(&session, STORAGE_CLIENT_TP_PORT);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to connect to storage TA!\n");
+        goto fail;
+    }
+
+    /* open file in secure storage */
+    rc = storage_open_file(session, &file_handle, FirmwareEncryptKeyFilename, 0, 0);
+    if (rc < 0) {
+        TLOGE("hwkey: failed to open keybox!\n");
+        storage_close_session(session);
+        goto fail;
+    }
+
+    /* read the encrypt key */
+    rc = storage_read(file_handle, 0, kbuf, kbuf_len);
+    storage_close_file(file_handle);
+    storage_close_session(session);
+
+fail:
+    if (rc <= 0) {
+        TLOGE("hwkey: firmware encrypt key read failed!\n");
+        return HWKEY_ERR_GENERIC;
+    } else {
+        TLOGE("hwkey: firmware encrypt key load successfully!\n");
+        return HWKEY_NO_ERROR;
+    }
+}
+
+uint32_t get_firmware_encrypt_key_handle(const struct hwkey_keyslot* slot,
+                                         uint8_t* kbuf,
+                                         size_t kbuf_len,
+                                         size_t* klen) {
+    load_firmware_loader_encrtpt_key(firmware_encrypt_key, firmware_loader_encrypt_key_size);
+    return get_key_handle(slot, kbuf, kbuf_len, klen);
+}
+
 #define INCLUDE_APPLOADER_KEY(key, key_file)   \
     INCFILE(key##_data, key##_size, key_file); \
     static struct apploader_key key = {        \
@@ -716,6 +815,17 @@ static uint32_t get_apploader_key_opaque(
     return get_apploader_key(data->priv, kbuf, kbuf_len, klen);
 }
 
+/* firmware_loader_encrypt_key_handle */
+static struct hwkey_opaque_handle_data
+        firmware_loader_encrypt_key_0_opaque_handle_data = {
+                .allowed_uuids = apploader_allowed_opaque_key_uuids,
+                .allowed_uuids_len =
+                        countof(apploader_allowed_opaque_key_uuids),
+                .retriever = get_apploader_key_opaque,
+                .priv = &firmware_loader_encrypt_key,
+};
+
+
 #ifdef APPLOADER_ENCRYPT_KEY_0
 static struct hwkey_opaque_handle_data
         apploader_encrypt_key_0_opaque_handle_data = {
@@ -778,6 +888,7 @@ static const uuid_t* allowed_clients[] = {
 
         /* Needs to access keyslots */
         &wv_uuid,
+        &firmware_loader_uuid,
 };
 
 bool hwkey_client_allowed(const uuid_t* uuid) {
@@ -822,6 +933,17 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &wv_uuid,
                 .key_id = HWOEMCRYPTO_WV_KEYBOX_ID,
                 .handler = get_wv_key,
+        },
+        {
+                .uuid = &firmware_loader_uuid,
+                .key_id = FIRMWARE_SIGN_KEY_ID,
+                .handler = get_firmware_loader_key,
+        },
+        {
+                .uuid = &firmware_loader_uuid,
+                .key_id = FIRMWARE_ENCRYPT_KEY_ID,
+                .handler = get_firmware_encrypt_key_handle,
+                .priv = &firmware_loader_encrypt_key_0_opaque_handle_data,
         },
 #ifdef APPLOADER_SIGN_KEY_0
         {

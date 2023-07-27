@@ -134,4 +134,10 @@ uint32_t derive_key_versioned_v1(
 
 uint32_t mp_dec(uint8_t* enc, size_t size, uint8_t* out);
 
+extern uint32_t get_firmware_encrypt_key_handle(const struct hwkey_keyslot* slot,
+                                                uint8_t* kbuf,
+                                                size_t kbuf_len,
+                                                size_t* klen);
+
+
 __END_CDECLS
