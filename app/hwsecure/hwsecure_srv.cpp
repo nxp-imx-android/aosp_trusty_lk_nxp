@@ -245,15 +245,6 @@ static int hwsecure_on_message(const struct tipc_port* port,
                     TLOGE("UUID doesn't match!\n");
                     return ERR_GENERIC;
                 }
-#if defined(MACH_IMX8QM)
-        case HWSECURE_WV_SET_WIDEVINE_SECURE_PIPELINE:
-                if (check_uuid_equal(&(ptr->peer), &widevine_ta_uuid)) {
-                    return imx8qm_widevine_secure_pipeline();
-                } else {
-                    TLOGE("UUID doesn't match!\n");
-                    return ERR_GENERIC;
-                }
-#endif
         default:
             return ERR_INVALID_ARGS;
     }

@@ -38,9 +38,6 @@ int set_ime_secure(uint32_t cmd, handle_t chan);
 /* Configre RDC memory orgion */
 int set_rdc_mem_region();
 
-/* Configure secure pipeline for imx8qm widevine */
-int imx8qm_widevine_secure_pipeline();
-
 #define RDC_MDAn(n) (rdc_base + 0x200 + (n * 4))
 #define MRSAn(n)    (rdc_base + 0x800 + (n) * 0x10)
 #define MREAn(n)    (rdc_base + 0x804 + (n) * 0x10)

@@ -419,10 +419,6 @@ static int power_on_vpu() {
 
 static int32_t sys_scu_ioctl(uint32_t fd, uint32_t cmd, user_addr_t user_ptr) {
     switch (cmd) {
-        case SCU_ALLOC_PART:
-            return alloc_part();
-        case SCU_MEM_PERMISSION:
-            return mem_permission();
         case SCU_POWER_ON_VPU:
             return power_on_vpu();
     }
@@ -457,6 +453,11 @@ void platform_init_scu(uint level) {
     } else {
         printf("SMC_GET_PARITION_NUMBER Get failed ret=%d\n", (int)smc_ret.r0);
     }
+
+    /* allocate vpu part */
+    alloc_part();
+    /* configure memory */
+    mem_permission();
 }
 
 static struct smc32_entity scu_entity = {

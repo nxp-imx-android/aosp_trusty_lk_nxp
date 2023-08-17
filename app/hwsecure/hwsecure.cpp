@@ -289,19 +289,3 @@ int get_ime_secure_mode(int &mode) {
     return 0;
 }
 #endif
-
-#if defined(MACH_IMX8QM)
-int imx8qm_widevine_secure_pipeline() {
-    int ret = 0;
-    ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_SCU, SCU_ALLOC_PART, NULL);
-    if (ret != 0) {
-            TLOGE("alloc vpu partition failed ret:%d\n",ret);
-    }
-
-    ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_SCU, SCU_MEM_PERMISSION, NULL);
-    if (ret != 0) {
-        TLOGE("configure secure memory failed ret:%d\n",ret);
-    }
-    return ret;
-}
-#endif
