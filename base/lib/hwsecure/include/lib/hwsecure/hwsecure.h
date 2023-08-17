@@ -20,6 +20,5 @@ int set_dcss_secure_access(int enable);
 int set_rdc_mem_region(void);
 int set_ime_secure_access(int enable);
 int get_ime_secure_mode(int* secure_mode);
-int set_widevine_secure_pipeline(void);
 
 __END_CDECLS
