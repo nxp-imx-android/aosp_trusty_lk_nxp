@@ -18,6 +18,7 @@
 #include <lib/sm.h>
 #include <lib/trusty/sys_fd.h>
 #include <platform/imx_amphion.h>
+#include <memcpy.h>
 
 #define SMC_ENTITY_AMPHION 55
 #define SMC_WV_PROBE SMC_FASTCALL_NR(SMC_ENTITY_AMPHION, 0)
@@ -48,7 +49,6 @@ struct obj_ref firmware_boot_obj_self_ref;
 void* firmware_boot_base = NULL;
 size_t firmware_boot_size;
 
-
 static long amphion_probe(struct smc32_args* args) {
     /* check trusty amphion driver exist*/
     return 0;
@@ -66,10 +66,11 @@ static long amphion_copy(struct smc32_args* args) {
         return -1;
     }
     if (secure_memory_offset != 0x10000000) {
-        memcpy((uint8_t*)secure_stream_buffer + dst_offset , (uint8_t*)secure_heap_base + secure_memory_offset + src_offset, size);
+        memcpy_aarch64(secure_stream_buffer + dst_offset , secure_heap_base + secure_memory_offset + src_offset, size);
     } else {
-        memcpy((uint8_t*)secure_stream_buffer + dst_offset, vctx.hdr_buffer + src_offset, size);
+        memcpy_aarch64(secure_stream_buffer + dst_offset, vctx.hdr_buffer + src_offset, size);
     }
+    arch_clean_invalidate_cache_range((addr_t)(uint8_t*)secure_stream_buffer + dst_offset, size);
     return 0;
 }
 
@@ -136,7 +137,7 @@ static int mmap_secure_heap() {
         phys_mem_obj_dynamic_initialize(&secure_heap_mem_obj,
                                     &secure_heap_obj_self_ref,
                                     secure_heap_paddr,
-                                    secure_heap_size, ARCH_MMU_FLAG_UNCACHED_DEVICE | ARCH_MMU_FLAG_PERM_NO_EXECUTE,
+                                    secure_heap_size, ARCH_MMU_FLAG_CACHED | ARCH_MMU_FLAG_PERM_NO_EXECUTE,
                                     destroy_phys_mem);
         // mmap
         ret = vmm_alloc_obj(
