@@ -54,6 +54,7 @@ GLOBAL_INCLUDES += \
 
 MODULE_INCLUDES += \
 	$(TRUSTY_TOP)/trusty/kernel/services/smc/include \
+	$(LOCAL_DIR)/lib \
 
 MODULE_SRCS := \
 	$(LOCAL_DIR)/debug.c \
@@ -131,7 +132,9 @@ endif
 endif
 ifeq (true, $(call TOBOOL,$(WITH_AMPHION_DRIVER)))
 MODULE_SRCS += \
-	$(LOCAL_DIR)/drivers/imx_amphion.c
+	$(LOCAL_DIR)/drivers/imx_amphion.c \
+	$(LOCAL_DIR)/lib/memcpy_aarch64.S
+
 endif
 
 
