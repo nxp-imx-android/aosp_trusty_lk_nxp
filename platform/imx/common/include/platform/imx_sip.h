@@ -1,6 +1,8 @@
 /*
  * Copyright 2023 NXP
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  */
 
 #ifndef __IMX_SIP_H__

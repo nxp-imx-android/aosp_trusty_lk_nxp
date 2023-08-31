@@ -1,6 +1,8 @@
 /*
  * Copyright 2023 NXP
  *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  */
 #ifndef _IMX_SCU_H_
 #define _IMX_SCU_H_
