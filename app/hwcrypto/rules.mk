@@ -21,7 +21,7 @@ MODULE := $(LOCAL_DIR)
 
 MANIFEST := $(LOCAL_DIR)/manifest.json
 
-CONSTANTS := \
+MODULE_CONSTANTS := \
 	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwcrypto_memmap_consts.json \
 	$(LOCAL_DIR)/nxp_hwcrypto_consts.json \
 	$(LOCAL_DIR)/nxp_hwcrypto_uuid_consts.json \
