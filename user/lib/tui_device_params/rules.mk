@@ -28,6 +28,7 @@ MODULE_INCLUDES += \
         $(LIBTEEUI_ROOT)/include \
         $(LOCAL_DIR)/include \
         $(TRUSTY_TOP)/trusty/user/app/confirmationui/examples/layouts/include \
+        $(TRUSTY_TOP)/trusty/user/app/confirmationui/include \
         $(TRUSTY_TOP)/trusty/user/app/confirmationui/src \
         trusty/hardware/nxp/platform/imx/soc/$(PLATFORM_SOC)/include
 
