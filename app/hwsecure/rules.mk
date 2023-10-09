@@ -19,7 +19,7 @@ MODULE := $(LOCAL_DIR)
 MANIFEST := \
         $(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwsecure_manifest.json \
 
-CONSTANTS := \
+MODULE_CONSTANTS := \
         $(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_hwsecure_memmap_consts.json \
 
 MODULE_INCLUDES += \

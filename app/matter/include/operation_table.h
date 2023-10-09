@@ -36,7 +36,7 @@ class OperationTable {
         }
         for (size_t i = 0; i < table_size_; ++i) {
             if (!table_[i]) {
-                table_[i] = move(operation);
+                table_[i] = std::move(operation);
                 return MATTER_ERROR_OK;
             }
         }

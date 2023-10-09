@@ -49,9 +49,9 @@
 
 #define dump_counter(counter) \
     do { \
-        LTRACEF("counter: lpmr=0x%x  lplr=0x%x  lp_counter=0x%llx\n", counter.lpmr, counter.lplr, counter.lp_counter); \
-        LTRACEF("counter: mask_lpmr=0x%x  mask_lplr=0x%x  mask=0x%llx\n", counter.mask_lpmr, counter.mask_lplr, counter.mask); \
-        LTRACEF("counter: logic_mr=0x%x  logic_lr=0x%x  logic_counter=0x%llx\n", counter.logic_mr, counter.logic_lr, counter.logic_counter); \
+        LTRACEF("counter: lpmr=0x%x  lplr=0x%x  lp_counter=0x%lx\n", counter.lpmr, counter.lplr, counter.lp_counter); \
+        LTRACEF("counter: mask_lpmr=0x%x  mask_lplr=0x%x  mask=0x%lx\n", counter.mask_lpmr, counter.mask_lplr, counter.mask); \
+        LTRACEF("counter: logic_mr=0x%x  logic_lr=0x%x  logic_counter=0x%lx\n", counter.logic_mr, counter.logic_lr, counter.logic_counter); \
     } while(0)
 
 struct snvs_counter {

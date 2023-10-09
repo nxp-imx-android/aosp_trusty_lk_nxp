@@ -18,7 +18,7 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 MODULE := $(LOCAL_DIR)
 
 MANIFEST := $(LOCAL_DIR)/manifest.json
-CONSTANTS := \
+MODULE_CONSTANTS := \
 	$(LOCAL_DIR)/../../platform/imx/soc/$(PLATFORM_SOC)/include/nxp_firmware_loader_memmap_consts.json \
 
 MODULE_SRCS += \

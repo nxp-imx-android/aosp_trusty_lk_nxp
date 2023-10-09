@@ -28,6 +28,9 @@
 #include <utils.h>
 
 namespace matter {
+
+using namespace std;
+
 const char* MatterCertDAC = "MatterCertDAC";
 const char* MatterCertPAI = "MatterCertPAI";
 const char* MatterCertCD  = "MatterCertCD";
@@ -231,7 +234,7 @@ void TrustyMatter::P256KeypairInitialize(const P256KPInitializeRequest& request,
             RAND_bytes((uint8_t *)&handler, sizeof(handler));
         };
         p256_keypair->handler = handler;
-        p256_keypair_table.Add(move(p256_keypair_));
+        p256_keypair_table.Add(std::move(p256_keypair_));
     }
     response->p256_handler = handler;
 
@@ -318,7 +321,7 @@ void TrustyMatter::P256KeypairDeserialize(const P256KPDeserializeRequest& reques
             RAND_bytes((uint8_t *)&handler, sizeof(handler));
         };
         p256_keypair->handler = handler;
-        p256_keypair_table.Add(move(p256_keypair_));
+        p256_keypair_table.Add(std::move(p256_keypair_));
     }
     response->p256_handler = handler;
 

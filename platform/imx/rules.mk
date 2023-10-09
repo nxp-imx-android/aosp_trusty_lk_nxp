@@ -47,6 +47,8 @@ endif
 WITH_LIB_SM ?= 1
 WITH_LIB_VERSION ?= 1
 
+MODULE_CFLAGS += -Wno-strict-prototypes
+
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/common/include \
 	$(LOCAL_DIR)/common/include/platform \
