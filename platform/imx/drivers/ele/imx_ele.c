@@ -590,7 +590,15 @@ static int generate_huk(user_addr_t user_ptr) {
 #endif /* MACH_IMX93 */
 
 static void get_pseudo_random(uint8_t *buf, size_t len) {
+	lk_time_ns_t ts = 0;
+
 	assert(buf);
+
+	/* use software rand before rng hardware ready */
+	if (!ele_inited) {
+		ts = current_time_ns();
+		srand((uint32_t)ts);
+	}
 
 	while (len) {
 		/* lk's rand() returns 32 pseudo random bits */

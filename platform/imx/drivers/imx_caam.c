@@ -4,8 +4,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <lk/init.h>
+#include <platform.h>
 #include <arch/ops.h>
 #include <imx-regs.h>
 #include <kernel/vm.h>
@@ -41,6 +43,7 @@ struct caam_job {
 
 static struct caam_job_rings* g_rings;
 static struct caam_job* g_job;
+static bool caam_ready = false;
 
 static void setup_job_rings(void) {
     paddr_t g_rings_pa;
@@ -600,6 +603,9 @@ void init_caam_env(uint level) {
 
     /* Initialize job ring addresses */
     setup_job_rings();
+
+    /* caam is ready now */
+    caam_ready = true;
 }
 
 static uint8_t entropy[32] __attribute__((aligned(64))) = {
@@ -624,8 +630,17 @@ void imx_trusty_rand_add_entropy(const void *buf, size_t len) {
 static struct mutex lock = MUTEX_INITIAL_VALUE(lock);
 
 static int imx_rand(bool enable_pr) {
-    int rand, *rand_buf;
+    int rand_num, *rand_buf;
     paddr_t ptr, entropy_pa;
+    lk_time_ns_t ts = 0;
+
+    /* use software rand before rng hardware ready */
+    if (!caam_ready) {
+        ts = current_time_ns();
+        srand((uint32_t)ts);
+        rand_num = rand();
+        return rand_num;
+    }
 
     mutex_acquire(&lock);
 
@@ -657,9 +672,9 @@ static int imx_rand(bool enable_pr) {
 
     mutex_release(&lock);
 
-    rand = *rand_buf;
+    rand_num = *rand_buf;
     free(rand_buf);
-    return rand;
+    return rand_num;
 }
 
 void platform_random_get_bytes(uint8_t *buf, size_t len) {
