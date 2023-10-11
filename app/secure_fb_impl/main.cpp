@@ -148,6 +148,7 @@ public:
         fb_size = fb_db_[0].fb_info.size;
         if (1 != prepare_dma(fb_base, fb_size, DMA_FLAG_TO_DEVICE | DMA_FLAG_ALLOW_PARTIAL, &pmem))
             return SECURE_FB_ERROR_DMA;
+        finish_dma(fb_base, fb_size, DMA_FLAG_TO_DEVICE | DMA_FLAG_ALLOW_PARTIAL);
         paddr = (uint32_t)pmem.paddr;
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         set_lcdif_secure_access(true);

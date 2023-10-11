@@ -218,8 +218,10 @@ static int handle_sg_buffer(void *buf, size_t len, void **tmp_buf,
             TLOGE("input error: bad len.\n");
             goto fail;
         }
+        finish_dma(buf_ptr, len, DMA_FLAG_TO_DEVICE | DMA_FLAG_MULTI_PMEM);
         *tmp_buf = buf_ptr;
     }
+    finish_dma(buf, len, DMA_FLAG_TO_DEVICE | DMA_FLAG_MULTI_PMEM);
 
     // alloc sg structure
     sg_ptr = (caam_sgt_entry_t *)memalign(CACHE_ALIGN, entries * sizeof(caam_sgt_entry_t));
@@ -244,6 +246,8 @@ static int handle_sg_buffer(void *buf, size_t len, void **tmp_buf,
         TLOGE("input error: bad len.\n");
         goto fail;
     }
+    finish_dma(sg_ptr, ALIGN(entries * sizeof(caam_sgt_entry_t), CACHE_ALIGN),
+               DMA_FLAG_TO_DEVICE | DMA_FLAG_MULTI_PMEM);
 
     *sg_pa = (uint32_t)(pmem[0].paddr);
     return 0;
@@ -269,6 +273,7 @@ static int handle_buffer(void *buf, size_t len, void **tmp_buf, uint32_t *pa)
         TLOGE("error: bad len.\n");
         return -1;;
     }
+    finish_dma(buf, len, DMA_FLAG_TO_DEVICE);
 
     if ((pmem.paddr % CACHE_ALIGN) || (pmem.size % CACHE_ALIGN)) {
         /* allocate temp memory */
@@ -285,6 +290,7 @@ static int handle_buffer(void *buf, size_t len, void **tmp_buf, uint32_t *pa)
             free(buf_ptr);
             return -1;
         }
+        finish_dma(buf_ptr, ALIGN(len, CACHE_ALIGN), DMA_FLAG_TO_DEVICE);
         *tmp_buf = buf_ptr;
     }
 
@@ -325,6 +331,7 @@ static void setup_job_rings(void) {
         TLOGE("prepare_dma failed: %d\n", rc);
         abort();
     }
+    finish_dma(g_rings, sizeof(*g_rings), DMA_FLAG_TO_DEVICE);
 
     /* Initialize job ring sizes */
     writel((uint32_t)pmem.paddr + offsetof(struct caam_job_rings, in),
@@ -346,6 +353,8 @@ void run_job(struct caam_job* job) {
     ret = prepare_dma(job->dsc, job->dsc_used * sizeof(uint32_t),
                       DMA_FLAG_TO_DEVICE, &pmem);
     assert(ret == 1);
+    finish_dma(job->dsc, job->dsc_used * sizeof(uint32_t), DMA_FLAG_TO_DEVICE);
+
     job_pa = (uint32_t)pmem.paddr;
 
     /* Add job to input ring */
@@ -355,6 +364,7 @@ void run_job(struct caam_job* job) {
 
     ret = prepare_dma(g_rings, sizeof(*g_rings), DMA_FLAG_TO_DEVICE, &pmem);
     assert(ret == 1);
+    finish_dma(g_rings, sizeof(*g_rings), DMA_FLAG_TO_DEVICE);
 
     /* get clock */
     caam_clk_get();
@@ -533,6 +543,7 @@ static uint32_t get_dma_address(uint8_t *address, uint32_t length)
     if (ret != 1) {
         return 0;
     }
+    finish_dma((void*)address, length, DMA_FLAG_TO_DEVICE);
     return (uint32_t)pmem.paddr;
 }
 
@@ -555,6 +566,7 @@ uint32_t caam_decap_blob(const uint8_t* kmod,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)kmod, kmod_size, DMA_FLAG_TO_DEVICE);
     kmod_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma((void*)blob, size + CAAM_KB_HEADER_LEN,
@@ -563,6 +575,7 @@ uint32_t caam_decap_blob(const uint8_t* kmod,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)blob, size + CAAM_KB_HEADER_LEN, DMA_FLAG_TO_DEVICE);
     blob_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma((void*)plain, size, DMA_FLAG_FROM_DEVICE, &pmem);
@@ -646,6 +659,7 @@ uint32_t caam_gen_blob(const uint8_t* kmod,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)kmod, kmod_size, DMA_FLAG_TO_DEVICE);
     kmod_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma((void*)plain, size, DMA_FLAG_TO_DEVICE, &pmem);
@@ -653,6 +667,7 @@ uint32_t caam_gen_blob(const uint8_t* kmod,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)plain, size, DMA_FLAG_TO_DEVICE);
     plain_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma((void*)blob, size + CAAM_KB_HEADER_LEN,
@@ -818,6 +833,7 @@ uint32_t caam_gen_dek_blob(uint8_t *dek, uint32_t dek_size, uint8_t *dek_blob) {
         ret = CAAM_FAILURE;
         goto exit;
     }
+    finish_dma((void *)SEC_MEM_PAGE3, ALIGN(dek_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE);
 
     sm_set_access_perm(partition);
 
@@ -918,6 +934,7 @@ uint32_t caam_decap_dek_blob(uint8_t *dek_blob, uint32_t dek_blob_size, uint8_t 
         ret = CAAM_FAILURE;
         goto exit;
     }
+    finish_dma((void *)tmp_blob, ALIGN(blob_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE);
 
     /* the dek should be in secure memory */
     dek_size = blob_size - CAAM_KB_HEADER_LEN;
@@ -928,6 +945,7 @@ uint32_t caam_decap_dek_blob(uint8_t *dek_blob, uint32_t dek_blob_size, uint8_t 
         ret = CAAM_FAILURE;
         goto exit;
     }
+    finish_dma((void *)SEC_MEM_PAGE3, ALIGN(dek_size, CACHE_ALIGN), DMA_FLAG_TO_DEVICE);
 
     sm_set_access_perm(partition);
 
@@ -990,6 +1008,7 @@ uint32_t caam_aes_op(const uint8_t* key,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)key, key_size, DMA_FLAG_TO_DEVICE);
     key_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma((void*)in, len, DMA_FLAG_TO_DEVICE, &pmem);
@@ -997,6 +1016,7 @@ uint32_t caam_aes_op(const uint8_t* key,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)in, len, DMA_FLAG_TO_DEVICE);
     in_pa = (uint32_t)pmem.paddr;
 
     ret = prepare_dma(out, len, DMA_FLAG_FROM_DEVICE, &pmem);
@@ -1157,6 +1177,7 @@ uint32_t caam_hash(uint32_t in, uint32_t out,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)(unsigned long)in, len, DMA_FLAG_TO_DEVICE);
     in_pa = (uint32_t)pmem.paddr;
 
     /* prepare dma and get output physical address */
@@ -1282,6 +1303,7 @@ uint32_t caam_gen_bkek_key(const uint8_t* kmod, uint32_t kmod_size,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)kmod, kmod_size, DMA_FLAG_FROM_DEVICE);
     pa_keymod = (uint32_t)pmem.paddr;
 
     if (caam_gen_bkek_key_pa(pa_keymod, pa, size) != CAAM_SUCCESS)
@@ -1326,6 +1348,7 @@ uint32_t caam_gen_mppriv(void)
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return CAAM_FAILURE;
     }
+    finish_dma((void*)passphrase, strlen(passphrase), DMA_FLAG_FROM_DEVICE);
     pa = (uint32_t)pmem.paddr;
 
     g_job->dsc[0] = 0xB0840005;

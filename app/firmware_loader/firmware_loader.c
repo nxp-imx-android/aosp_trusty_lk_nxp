@@ -191,7 +191,7 @@ static bool load_to_secure_memory(
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return false;
     }
-
+    finish_dma(secure_boot_buffer, FIRMWARE_BOOT_SIZE, DMA_FLAG_FROM_DEVICE);
     /* unmmap secure boot buffer */
     munmap(secure_boot_buffer, FIRMWARE_BOOT_SIZE);
 

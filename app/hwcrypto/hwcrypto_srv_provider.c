@@ -47,6 +47,7 @@ int encap_blob(uint32_t plain_pa, uint32_t size,
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return HWCRYPTO_ERROR_INTERNAL;
     }
+    finish_dma((void*)skeymod, sizeof(skeymod), DMA_FLAG_TO_DEVICE);
     kmod_pa = (uint32_t)pmem.paddr;
 
     ret = caam_gen_blob_pa(kmod_pa, sizeof(skeymod),
@@ -78,6 +79,7 @@ int gen_bkek(uint32_t buf, uint32_t len) {
         TLOGE("failed (%d) to prepare dma buffer\n", ret);
         return HWCRYPTO_ERROR_INTERNAL;
     }
+    finish_dma((void*)skeymod, sizeof(skeymod), DMA_FLAG_TO_DEVICE);
     kmod_pa = (uint32_t)pmem.paddr;
 
     if (caam_gen_bkek_key_pa(kmod_pa, buf, len) != 0)
