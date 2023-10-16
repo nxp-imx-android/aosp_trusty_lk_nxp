@@ -555,7 +555,7 @@ static int hwcrypto_provision_dek_blob(struct hwcrypto_chan_ctx* ctx,
     uint8_t *dek_blob = NULL;
     uint32_t dek_blob_size;
     const char* DekBlobFilename = NULL;
-    uint32_t rc = 0;
+    int rc = 0;
 
     dek_blob_size = *((uint32_t *)req_data);
     dek_blob = req_data + sizeof(uint32_t);
@@ -589,7 +589,7 @@ static int hwcrypto_provision_dek_blob(struct hwcrypto_chan_ctx* ctx,
     }
 
     rc = storage_write(file_handle, 0, dek_blob, dek_blob_size, STORAGE_OP_COMPLETE);
-    if (rc < 0 || rc != dek_blob_size) {
+    if (rc < 0 || rc != (int)dek_blob_size) {
         TLOGE("hwcrypto: %s write failed!\n", DekBlobFilename);
         hdr->status = HWCRYPTO_ERROR_INTERNAL;
         goto exit;
@@ -725,7 +725,7 @@ static bool check_whitelist(enum hwcrypto_cmd cmd)
         HWCRYPTO_GET_BOOTLOADER_DEK_BLOB_SIZE,
     };
 
-    while (count < sizeof(whitelist))
+    while (count < sizeof(whitelist)/sizeof(enum hwcrypto_cmd))
     {
         if (cmd != whitelist[count])
             count++;
