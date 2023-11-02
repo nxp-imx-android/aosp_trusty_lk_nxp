@@ -579,7 +579,6 @@ static int hwcrypto_provision_dek_blob(struct hwcrypto_chan_ctx* ctx,
     rc = storage_open_file(session, &file_handle, DekBlobFilename, STORAGE_FILE_OPEN_CREATE, 0);
     if (rc < 0) {
         TLOGE("hwcrypto: failed to open keybox: %d!\n", rc);
-        storage_close_session(session);
         hdr->status = HWCRYPTO_ERROR_INTERNAL;
         goto exit;
     }
