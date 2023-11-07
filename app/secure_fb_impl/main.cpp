@@ -152,6 +152,8 @@ public:
         paddr = (uint32_t)pmem.paddr;
 #if defined(MACH_IMX8MP) || defined(MACH_IMX8MM)
         set_lcdif_secure_access(true);
+#elif defined(MACH_IMX8ULP)
+        set_dcnano_secure_access(true);
 #endif
         struct csu_cfg_secure_disp_msg msg;
         msg.enable = 1;

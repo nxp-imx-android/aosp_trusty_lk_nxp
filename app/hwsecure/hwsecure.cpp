@@ -258,6 +258,13 @@ int set_ime_secure(uint32_t cmd, handle_t chan) {
             goto exit;
         }
 
+        /* set DCnano policy */
+        ret = set_dcnano_secure(HWSECURE_DCNANO_SECURE_ACCESS);
+        if (ret) {
+            TLOGE("DCnano secure policy set failed!\n");
+            goto exit;
+        }
+
         secure_mode = SECURE;
     } else if (cmd == HWSECURE_IME_NON_SECURE_ACCESS) {
         struct xrdc_mda_config g2d_mda = {11, 3, MDA_SA_NS};
