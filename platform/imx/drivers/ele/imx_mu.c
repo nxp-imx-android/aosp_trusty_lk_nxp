@@ -11,7 +11,6 @@
 
 #define RX_TIMEOUT (100)
 
-#if defined(MACH_IMX8ULP) || defined(MACH_IMX93)
 #define MU_TCR		  0x120
 #define MU_TSR		  0x124
 #define MU_RCR		  0x128
@@ -20,7 +19,12 @@
 #define MU_RR(n)	  (0x280 + 0x4 * (n))
 #define MU_TSR_TE(n)	  (1U << (n))
 #define MU_RSR_RF(n)	  (1U << (n))
+
+#if defined(MACH_IMX8ULP) || defined(MACH_IMX93)
 #define MU_MAX_RX_CHANNEL 4
+#define MU_MAX_TX_CHANNEL 8
+#elif defined(MACH_IMX95)
+#define MU_MAX_RX_CHANNEL 8
 #define MU_MAX_TX_CHANNEL 8
 #endif
 
@@ -30,7 +34,6 @@ static bool timeout_elapsed(lk_time_ns_t timeout) {
 	return current_time() > timeout;
 }
 
-#if defined(MACH_IMX8ULP) || defined(MACH_IMX93)
 static int mu_wait_for(vaddr_t addr, uint32_t mask)
 {
 	lk_time_ns_t timeout = current_time() + 1;
@@ -89,7 +92,6 @@ int imx_mu_plat_receive(vaddr_t base, unsigned int index, uint32_t *msg)
 
 	return 0;
 }
-#endif
 
 /*
  * Receive a message via the MU

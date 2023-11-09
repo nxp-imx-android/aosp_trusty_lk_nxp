@@ -14,7 +14,7 @@
 #define IMX_MU_MSG_SIZE	  17
 #define IMX_MU_NB_CHANNEL 4
 
-#if defined(MACH_IMX8ULP) || defined(MACH_IMX93)
+#if defined(MACH_IMX8ULP) || defined(MACH_IMX93) || defined(MACH_IMX95)
 struct imx_mu_msg_header {
 	uint8_t version;
 	uint8_t size;

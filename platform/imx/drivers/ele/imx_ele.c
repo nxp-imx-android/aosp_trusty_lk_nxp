@@ -61,6 +61,9 @@
 #define ELE_MU_DID 0x7
 #elif defined(MACH_IMX93)
 #define ELE_MU_DID 0x3
+#elif defined(MACH_IMX95)
+//TODO
+#define ELE_MU_DID 0x3
 #else
 #error "ELE_MU_DID not specified for this platform"
 #endif
@@ -473,7 +476,6 @@ err:
 	return -1;
 }
 
-#if defined(MACH_IMX93)
 static int tee_otp_get_hw_unique_key(user_addr_t hwkey, size_t key_size, user_addr_t ctx, size_t ctx_size)
 {
 	int res = -1;
@@ -587,7 +589,6 @@ static int generate_huk(user_addr_t user_ptr) {
 
 	return ret;
 }
-#endif /* MACH_IMX93 */
 
 static void get_pseudo_random(uint8_t *buf, size_t len) {
 	lk_time_ns_t ts = 0;
