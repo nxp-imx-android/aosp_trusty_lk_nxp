@@ -49,6 +49,10 @@ static uint8_t skeymod_hbk[16] __attribute__((aligned(16))) = {
         0x3b, 0xe9, 0x75, 0x28, 0xc4, 0x3a, 0x6d, 0x52,
         0x42, 0x9c, 0x24, 0x1e, 0x07, 0xb0, 0x43, 0x1e};
 
+static uint8_t skeymod_wv[16] __attribute__((aligned(16))) = {
+        0xab, 0xc9, 0xef, 0x36, 0xc2, 0x3b, 0x7c, 0x33,
+        0x31, 0x4c, 0xa4, 0x4f, 0x15, 0xa2, 0x40, 0x18};
+
 /*
  *  Manufacture Protection Public Key support
  */
@@ -85,6 +89,12 @@ static const uuid_t km_uuid = KEYMASTER_SERVER_APP_UUID;
  */
 #define HWOEMCRYPTO_WV_KEYBOX_ID "com.android.trusty.hwoemcrypto.wvkeybox"
 static const uuid_t wv_uuid = HWOEMCRYPTO_SERVER_APP_UUID;
+
+/*
+ *  Widevine device key
+ */
+#define HWOEMCRYPTO_WV_DEVICE_KEY_ID "com.android.trusty.widevine.opk"
+#define HWOEMCRYPTO_WV_DEVICE_KEY_SIZE 32
 
 #define FIRMWARE_SIGN_KEY_ID "com.android.trusty.firmware_loader.sign.key.0"
 #define FIRMWARE_ENCRYPT_KEY_ID "com.android.trusty.firmware_loader.encrypt.key.0"
@@ -621,6 +631,26 @@ fail:
     }
 }
 
+static uint32_t get_wv_device_key(const struct hwkey_keyslot* slot,
+                            uint8_t* kbuf,
+                            size_t kbuf_len,
+                            size_t* klen) {
+    uint32_t res;
+    assert(kbuf_len >= HWOEMCRYPTO_WV_DEVICE_KEY_SIZE);
+
+    res = caam_gen_bkek_key(skeymod_wv, sizeof(skeymod_wv), (uint32_t)(intptr_t)kbuf, HWOEMCRYPTO_WV_DEVICE_KEY_SIZE);
+
+    if (res == CAAM_SUCCESS) {
+        *klen = HWOEMCRYPTO_WV_DEVICE_KEY_SIZE;
+        return HWKEY_NO_ERROR;
+    } else {
+        /* wipe target buffer */
+        TLOGE("%s: failed to generate wv device key!\n", __func__);
+        memset(kbuf, 0, HWOEMCRYPTO_WV_DEVICE_KEY_SIZE);
+        return HWKEY_ERR_GENERIC;
+    }
+}
+
 /*
  * Apploader key(s)
  */
@@ -933,6 +963,11 @@ static const struct hwkey_keyslot _keys[] = {
                 .uuid = &wv_uuid,
                 .key_id = HWOEMCRYPTO_WV_KEYBOX_ID,
                 .handler = get_wv_key,
+        },
+        {
+                .uuid = &wv_uuid,
+                .key_id = HWOEMCRYPTO_WV_DEVICE_KEY_ID,
+                .handler = get_wv_device_key,
         },
         {
                 .uuid = &firmware_loader_uuid,
