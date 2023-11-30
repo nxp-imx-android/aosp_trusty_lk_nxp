@@ -174,8 +174,14 @@ static void init_dtg_ch1_regs() {
 
     p_ulc_x = dis_ulc.dis_ulc_x + secure_ui_param.x;
     p_ulc_y = dis_ulc.dis_ulc_y + secure_ui_param.y;
+
+#ifdef WITH_CUSTOMIZED_SECURE_UI
+    p_lrc_x = p_ulc_x + secure_ui_param.w;
+    p_lrc_y = p_ulc_y + secure_ui_param.h;
+#else
     p_lrc_x = p_ulc_x + display_param.hactive;
     p_lrc_y = p_ulc_y + display_param.vactive;
+#endif
 
     imx_init_secureui(CTX_DB, ((p_ulc_y << TC_Y_POS) | p_ulc_x), 0x00020010);
     imx_init_secureui(CTX_DB, ((p_lrc_y << TC_Y_POS) | p_lrc_x), 0x00020014);
@@ -201,12 +207,19 @@ static void init_scaler_ch1_regs() {
     imx_init_secureui(CTX_SB_HP, 0x2, 0x0001c014);
 
     u32 scale_param = (((secure_ui_param.h -1) << 16) | (secure_ui_param.w - 1));
+#ifdef WITH_CUSTOMIZED_SECURE_UI
+    u32 scale_param_dst = scale_param;
+    uint32_t l_vinc = ((secure_ui_param.h << 13) + (secure_ui_param.h >> 1)) / secure_ui_param.h;
+    uint32_t c_vinc = ((secure_ui_param.h << 13) + (secure_ui_param.h >> 1)) / secure_ui_param.h;
+    uint32_t l_hinc = ((secure_ui_param.w << 13) + (secure_ui_param.w >> 1)) / secure_ui_param.w;
+    uint32_t c_hinc = ((secure_ui_param.w << 13) + (secure_ui_param.w >> 1)) / secure_ui_param.w;
+#else
     u32 scale_param_dst = (((display_param.vactive -1) << 16) | (display_param.hactive - 1));
-
     uint32_t l_vinc = ((secure_ui_param.h << 13) + (display_param.vactive >> 1)) / display_param.vactive;
     uint32_t c_vinc = ((secure_ui_param.h << 13) + (display_param.vactive >> 1)) / display_param.vactive;
     uint32_t l_hinc = ((secure_ui_param.w << 13) + (display_param.hactive >> 1)) / display_param.hactive;
     uint32_t c_hinc = ((secure_ui_param.w << 13) + (display_param.hactive >> 1)) / display_param.hactive;
+#endif
 
     imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c018);
     imx_init_secureui(CTX_SB_HP, scale_param, 0x0001c01c);

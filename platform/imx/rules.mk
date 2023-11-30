@@ -79,6 +79,12 @@ ifeq (true,$(call TOBOOL,$(WITH_DCSS_SUPPORT)))
 MODULE_SRCS += \
 	$(LOCAL_DIR)/drivers/imx_csu.c \
 	$(LOCAL_DIR)/drivers/imx_dcss.c
+
+ifeq (true,$(call TOBOOL,$(WITH_CUSTOMIZED_SECURE_UI)))
+MODULE_DEFINES += \
+        WITH_CUSTOMIZED_SECURE_UI=1
+endif
+
 endif
 
 ifeq (true,$(call TOBOOL,$(WITH_DCNANO_SUPPORT)))
